@@ -1,0 +1,39 @@
+name: Frontend Dev Server Test
+
+on:
+  pull_request:
+    branches: ["main"]
+
+jobs:
+  dev-server-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: ./code-portal
+
+      - name: Start Vite dev server in background
+        working-directory: ./code-portal
+        run: |
+          echo "Starting Vite dev server..."
+          nohup npm run dev > server.log 2>&1 &
+          sleep 10  # wait for server to start
+
+      - name: Test Vite dev server
+        working-directory: ./code_portal
+        run: |
+          if ! curl -s --fail http://localhost:5173/; then
+            echo "Vite dev server is not accessible!"
+            cat server.log
+            exit 1
+          fi
+          echo "Vite dev server is running successfully!"

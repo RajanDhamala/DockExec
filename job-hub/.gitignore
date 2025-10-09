@@ -1,0 +1,30 @@
+prisma/dev.db
+*.log
+prisma/migrations/
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# Environment files
+.env
+.env.*
+
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+build/
+dist-ssr/
+
+# Local
+*.local
+
+# Editor and system files
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store

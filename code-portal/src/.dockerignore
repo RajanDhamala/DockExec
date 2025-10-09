@@ -1,0 +1,32 @@
+# Node modules — don’t copy
+node_modules
+npm-debug.log
+yarn.lock
+pnpm-lock.yaml
+
+# Local environment files
+
+
+# Build output — will be rebuilt inside container
+dist
+build
+
+# Logs
+logs
+*.log
+
+# OS / editor files
+.DS_Store
+.vscode
+.idea
+*.swp
+
+# Git
+.git
+.gitignore
+
+# Tests, coverage, temp files
+coverage
+*.tmp
+*.tsbuildinfo
+
