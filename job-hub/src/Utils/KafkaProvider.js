@@ -2,7 +2,7 @@ import { Kafka } from "kafkajs";
 
 const kafka = new Kafka({
   clientId: 'my-app',
-  brokers: ['localhost:9092']
+  brokers: ['192.168.2.140:29092']
 })
 
 const producer=kafka.producer()
@@ -18,7 +18,6 @@ const initkafka=async()=>{
         throw err
     }
 }
-
 export {
     initkafka,
     producer,
