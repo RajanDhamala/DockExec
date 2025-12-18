@@ -1,0 +1,36 @@
+# Binaries
+/bin/
+/build/
+/*.exe
+/*.dll
+/*.so
+/*.dylib
+
+# Go module cache
+/pkg/mod/
+
+# Test binary
+*.test
+
+# Output of go coverage tool
+*.out
+
+# IDE/editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Environment files
+.env
+
+# Logs
+*.log
+
+# Temporary files
+*.tmp
+*.temp

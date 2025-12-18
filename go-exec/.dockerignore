@@ -1,0 +1,24 @@
+# Binaries
+/executor
+/main
+
+# Git files
+.git
+.gitignore
+
+# Node/npm files if any
+node_modules
+
+# Local environment files
+.env
+.env.local
+
+# OS & editor files
+.DS_Store
+*.swp
+*.tmp
+*.log
+
+# Go build cache (optional)
+**/bin
+**/build
