@@ -4,6 +4,7 @@ import ApiResponse from "../Utils/ApiResponse.js";
 import { producer } from "../Utils/KafkaProvider.js";
 import { v4 as uuidv4 } from 'uuid';
 import Problem from "../Schemas/CodeSchema.js"
+import { RedisClient} from "../Utils/RedisClient.js" 
 
 const execCode = asyncHandler(async (req, res) => {
   const { code, language,socketId } = req.body;
@@ -18,11 +19,14 @@ const execCode = asyncHandler(async (req, res) => {
       messages: [
         {
           userId: user.id,
-          value: JSON.stringify({ code, language ,"id":uuid,"socketId":socketId}),
+          value: JSON.stringify({ code, language ,"id":uuid,"socketId":socketId,"userId":req.user.id}),
         },
       ],
     });
     console.log("Job produced successfully");
+  await RedisClient.set(`exec:${uuid}`,JSON.stringify({ code, language, id: uuid, socketId, userId: user.id }),
+  { EX: 120 }
+);
   } catch (error) {
     console.log("Failed to produce job:", error);
     throw new ApiError(400, "Failed to produce job for code execution");
