@@ -8,7 +8,7 @@ import { emitTestresult, emitBlockedresult, emitTestCaseresult, emitActuallyRunR
 import CodeRouter from "./src/Routes/CodeRoute.js"
 import { connectRedis, RedisClient } from "./src/Utils/RedisClient.js";
 import { save2Redis, saveTest2db } from "./src/Utils/RedisUtils.js";
-import {LogTrialResult,LogRawExecution } from "./src/Controllers/ExecutionLogs.js"
+import { LogTrialResult, LogRawExecution, LogTestCaseResult } from "./src/Controllers/ExecutionLogs.js"
 
 const app = express();
 
@@ -49,17 +49,20 @@ app.use(express.json());
               await emitTestCaseresult(data);
               await save2Redis(data)
               if (data.testCaseNumber !== data.totalTestCases) {
+                console.log(" this is final test case no")
               } else {
                 const key = `job:${data.jobId}`;
                 const all = await RedisClient.hGetAll(key);
-                await saveTest2db(all)
+                console.log("all data:",all)
+                // await saveTest2db(all)
+                await LogTestCaseResult(all)
+                // console.log("this is not final test case no")
               }
             }
             else if (data?.jobId !== "") {
               console.log("No test cases, single job result");
               await emitTestresult(data);
               await LogRawExecution(data)
-
             }
             else {
               // nothing to do
@@ -90,7 +93,6 @@ app.use(express.json());
     console.error(" Kafka initialization failed:", err);
   }
 })();
-
 
 app.get("/", (req, res) => {
   res.send("Server is up and running");

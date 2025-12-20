@@ -1,54 +1,30 @@
+
 import mongoose from "mongoose";
 
+// --- TestCase schema ---
 const TestCaseSchema = new mongoose.Schema({
-  Caseid: {
-    type: String,
-    index: true
-  },
-  userCode: {
-    type: String
-  },
-  ttx: {
-    type: Number
-  },
-  GeneratedCode: {
-    type: String
-  },
-  output: {
-    type: String
-  },
-  ExecutedAt: {
-    type: Date,
-    default: Date.now
-  },
- status: {
-    type: String
-    , enum: ["Success", "Failed"],
-    default: "Success"
-  },
-}, { _id: false }); 
-
-const RunResultSchema = new mongoose.Schema({
-  _id: {
-    type: String,
-    unique: true
-  },
-  problemid: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "Problem",
-    required: true
-  },
-  userId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "User",
-    required: true
-  },
-  language: {
-    type: String,
-    required: true
-  },
-  TestCases: [TestCaseSchema]
+  _id: { type: String, unique: true }, // jobId
+  userId: { type: mongoose.Schema.ObjectId, required: true ,ref:"User",index:true},       // user _id string
+  problemId: { type: mongoose.Schema.ObjectId, required: true ,ref:"Problem",index:true},    // problem _id string
+  language: { type: String, required: true },
+  totalTestCases: { type: Number, default: 0 },
+  status: { type: String, default: "executed" },
+  passedNo:{type:Number},
+  code:{type:String},
+  testCases: [
+    {
+      caseId: String,
+      testCaseNumber: Number,
+      input: String,
+      expectedOutput: String,
+      userOutput: String,
+      duration: Number,
+      isPassed: Boolean,
+      executedAt: { type: Date, default: Date.now }
+    }
+  ]
 }, { timestamps: true });
 
-const RunResult = mongoose.model("RunResult", RunResultSchema);
-export default RunResult;
+// Safe model registration
+const TestCase = mongoose.models.TestCase || mongoose.model("TestCase", TestCaseSchema);
+export default TestCase

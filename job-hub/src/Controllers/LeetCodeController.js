@@ -1,10 +1,10 @@
 import asyncHandler from "../Utils/AsyncHandler.js";
 import Problem from "../Schemas/CodeSchema.js"
 import ApiError from "../Utils/ApiError.js";
-import ApiResponse from "../Utils/ApiResponse.js"; 
+import ApiResponse from "../Utils/ApiResponse.js";
 import { producer } from "../Utils/KafkaProvider.js";
 import { v4 as uuidv4 } from 'uuid';
-import { RedisClient} from "../Utils/RedisClient.js" 
+import { RedisClient } from "../Utils/RedisClient.js"
 
 const getList = asyncHandler(async (req, res) => {
   const listKey = "getList";
@@ -20,7 +20,7 @@ const getList = asyncHandler(async (req, res) => {
   const list = await Problem.find().select("title");
 
   try {
-    await RedisClient.set(listKey, JSON.stringify(list), { EX: 120 }); 
+    await RedisClient.set(listKey, JSON.stringify(list), { EX: 120 });
   } catch (error) {
     console.log("Failed to cache list in Redis:", error);
   }
@@ -66,10 +66,10 @@ const RunCode = asyncHandler(async (req, res) => {
 
   try {
     const cached = await RedisClient.get(ProblemKey);
-    if (cached){
-   problemData = JSON.parse(cached);
-    console.log("problem cached found btw")
-    } 
+    if (cached) {
+      problemData = JSON.parse(cached);
+      console.log("problem cached found btw")
+    }
     else {
       problemData = await Problem.findById(problemId);
       if (!problemData) throw new ApiError(404, 'Problem not found');
@@ -83,6 +83,7 @@ const RunCode = asyncHandler(async (req, res) => {
 
   // Produce execution job
   const testCaseToSend = type === "run" ? problemData.testCases[0] : problemData.testCases;
+
   await producer.send({
     topic: type === "submit" ? "test_code" : "Runs_code",
     messages: [{
@@ -99,12 +100,12 @@ const RunCode = asyncHandler(async (req, res) => {
         wrapper_type: problemData.wrapper_type
       })
     }]
-    
+
   });
-  console.log("code produced for running",type)
+  console.log("code produced for running", type)
   return res.send(new ApiResponse(200, 'code sent for running', type === "submit" ? uuid : problemData));
 });
 
 export {
-  RunCode,getList,GetData
+  RunCode, getList, GetData
 }
