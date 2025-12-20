@@ -254,7 +254,7 @@ def generate_linkedlist_wrapper(user_code, function_name, parameters, test_case,
     return wrapper
 
 
-def generate_wrapper(user_code, job_data, test_case, language, function_name, parameters, wrapper_type  ,suppress_prints=False):
+def generate_wrapper(user_code, job_data, test_case, language, function_name, parameters, wrapper_type, suppress_prints=False):
     """Main wrapper generation function."""
 
     print(f"Generating wrapper: {function_name}, type: {
@@ -407,7 +407,7 @@ def consume_test_code():
         # generating wrapper for each test case
         for i, tc in enumerate(testCases):
             wrapped = generate_wrapper(
-                code, job, tc, language,function_name, parameters, wrapper_type ,suppress_prints=True
+                code, job, tc, language, function_name, parameters, wrapper_type, suppress_prints=True
             )
 
             test_case_job = {
@@ -420,13 +420,15 @@ def consume_test_code():
                 "expected": tc.get("expected"),
                 "wrappedCode": wrapped,
                 "socketId": socket_id,
-                "userId": user_id
+                "userId": user_id,
+                "problemId": problem_id,
+                "orginalCode": code if i == 0 else ""
             }
 
             try:
                 producer.send("run_code", test_case_job)
                 producer.flush()
-                print("sending each test case",test_case_job.testCaseNumber) 
+                print("sending each test case", test_case_job.testCaseNumber)
             except Exception as e:
                 print(f"Failed to publish test case {i+1}: {e}")
 
@@ -467,7 +469,8 @@ def consume_run_code():
         function_name = job.get("function_name")
         parameters = job.get("parameters")
         wrapper_type = job.get("wrapper_type")
-
+        problem_id = job.get("problemId")
+        print("problem id is", problem_id)
         print(f"Received direct run_code job {job_id} ({language})")
 
         # -- safety -------------------------------------------------------
@@ -490,19 +493,21 @@ def consume_run_code():
 
         # -- generating wrapper (preserve prints) ---------------------------
         wrapped = generate_wrapper(
-            code, job, test_case, language,  function_name, parameters, wrapper_type  ,suppress_prints=False)
+            code, job, test_case, language,  function_name, parameters, wrapper_type, suppress_prints=False)
 
         structured_job = {
             "jobId": job_id,
             "socketId": socket_id,
             "code": wrapped,
             "language": language,
-            "userId": user_id
+            "userId": user_id,
+            "problemId": problem_id
         }
-
-        producer.send("Actually_Runs_code",structured_job)
+        print("problem is sent:", problem_id)
+        print("language iz:", language)
+        producer.send("Actually_Runs_code", structured_job)
         producer.flush()
-        print("print + only one test case allowed",structured_job)
+        print("print + only one test case allowed", structured_job)
 
 
 # Starting all consumers in parallel

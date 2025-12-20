@@ -19,22 +19,24 @@ import (
 )
 
 type Job struct {
-	JobID    string `json:"jobId"`
-	SocketId string `json:"socketId"`
-	Code     string `json:"code"`
-	Language string `json:"language"`
-	UserId   string `json:"userId"`
+	JobID     string `json:"jobId"`
+	SocketId  string `json:"socketId"`
+	Code      string `json:"code"`
+	Language  string `json:"language"`
+	UserId    string `json:"userId"`
+	ProblemId string `json:"problemId"`
 }
 
 type Result struct {
-	SocketId string  `json:"socketId"`
-	JobID    string  `json:"jobId"`
-	Status   string  `json:"status"`
-	Output   string  `json:"output"`
-	Duration float64 `json:"duration_sec"`
-	UserId   string  `json:"userId"`
-	Code     string  `json:"code"`
-	Language string  `json:"language"`
+	SocketId  string  `json:"socketId"`
+	JobID     string  `json:"jobId"`
+	Status    string  `json:"status"`
+	Output    string  `json:"output"`
+	Duration  float64 `json:"duration_sec"`
+	UserId    string  `json:"userId"`
+	Code      string  `json:"code"`
+	Language  string  `json:"language"`
+	ProblemId string  `json:"problemId"`
 }
 
 // struct for test case jobs
@@ -50,6 +52,7 @@ type TestCaseJob struct {
 	SocketId       string `json:"socketId"`
 	UserId         string `json:"userId"`
 	ProblemId      string `json:"problemId"`
+	OriginalCode   string `json:"orginalCode"`
 }
 
 // struct for test case results
@@ -70,6 +73,7 @@ type TestCaseResult struct {
 	Input          string  `json:"input"`
 	UserId         string  `json:"userId"`
 	ProblemId      string  `json:"problemId"`
+	OriginalCode   string  `json:"orginalCode"`
 }
 
 const (
@@ -135,14 +139,17 @@ func consumeActualrunCode(broker string) {
 
 		output, status, execDuration := executeCode(job.Code, job.Language)
 		fmt.Println("output:", output)
+		fmt.Println("problemId:", job.ProblemId)
 		result := Result{
-			SocketId: job.SocketId,
-			JobID:    job.JobID,
-			Status:   status,
-			Output:   output,
-			Duration: execDuration,
-			UserId:   job.UserId,
-			Code:     job.Code,
+			SocketId:  job.SocketId,
+			JobID:     job.JobID,
+			Status:    status,
+			Output:    output,
+			Duration:  execDuration,
+			UserId:    job.UserId,
+			Code:      job.Code,
+			Language:  job.Language,
+			ProblemId: job.ProblemId,
 		}
 
 		data, _ := json.Marshal(result)
@@ -269,7 +276,6 @@ func consumeRunCode(broker string) {
 			// Trying different comparison methods
 			passed = compareResults(actualOutput, expectedOutput)
 		}
-		fmt.Println("problem id:",testJob.ProblemId)
 
 		// Creating test case result
 		testResult := TestCaseResult{
@@ -288,6 +294,7 @@ func consumeRunCode(broker string) {
 			SocketId:       testJob.SocketId,
 			UserId:         testJob.UserId,
 			ProblemId:      testJob.ProblemId,
+			OriginalCode:   testJob.OriginalCode,
 		}
 
 		if status != "success" {
