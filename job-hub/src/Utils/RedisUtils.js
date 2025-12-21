@@ -10,7 +10,7 @@ const save2Redis=async(data)=>{
     )
 
 await RedisClient.hSet(key, "total", data.totalTestCases.toString());
-await RedisClient.expire(key, 30);
+await RedisClient.expire(key, 180);
 }
 
 const saveTest2db = async (data) => {
@@ -42,7 +42,5 @@ const saveTest2db = async (data) => {
   }
 
 };
-
-
 
 export {save2Redis,saveTest2db}

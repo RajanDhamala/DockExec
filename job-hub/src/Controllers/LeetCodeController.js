@@ -5,6 +5,7 @@ import ApiResponse from "../Utils/ApiResponse.js";
 import { producer } from "../Utils/KafkaProvider.js";
 import { v4 as uuidv4 } from 'uuid';
 import { RedisClient } from "../Utils/RedisClient.js"
+import TestCase from "../Schemas/TestCaseSchema.js";
 
 const getList = asyncHandler(async (req, res) => {
   const listKey = "getList";
@@ -106,6 +107,36 @@ const RunCode = asyncHandler(async (req, res) => {
   return res.send(new ApiResponse(200, 'code sent for running', type === "submit" ? uuid : problemData));
 });
 
+
+const GetSubmissons = asyncHandler(async (req, res) => {
+  const { problemId } = req.params;
+  const userId = req.user.id;
+  let submissions;
+  if (!problemId) {
+    throw new ApiError(400, 'please provide problemId in request params');
+  }
+
+  const submissionsKey = `submissions:${userId}:${problemId}`;
+
+  try {
+    const cached = await RedisClient.get(submissionsKey);
+    if (cached) {
+      submissions = JSON.parse(cached);
+      return res.send(new ApiResponse(200, 'fetched submissions from redis', submissions));
+    }
+
+  } catch (Err) {
+    console.log("data not found on redis btw")
+  }
+
+  submissions = await TestCase.find({ userId, problemId }).sort({ createdAt: -1 }).limit(10).select("problemId language createdAt totalTestCases status passedNo");
+  await RedisClient.set(submissionsKey, JSON.stringify(submissions), { EX: 120 });
+
+
+  return res.send(new ApiResponse(200, 'fetched submissions data', submissions));
+})
+
+
 export {
-  RunCode, getList, GetData
+  RunCode, getList, GetData, GetSubmissons
 }

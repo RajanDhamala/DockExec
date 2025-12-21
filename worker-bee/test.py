@@ -293,7 +293,7 @@ def publish_blocked_result(result_data, topic="blocked_exec"):
                  jobId, socketId, reason, language, code, userId, etc.
     """
     try:
-        producer.send(topic, json.dumps(result_data).encode("utf-8"))
+        producer.send(topic,result_data)
         producer.flush()
         print(f"Blocked job {result_data.get('jobId')} published to {
               topic}. Reason: {result_data.get('reason')}")
