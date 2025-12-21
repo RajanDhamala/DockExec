@@ -9,9 +9,30 @@ import CodeRouter from "./src/Routes/CodeRoute.js"
 import { connectRedis, RedisClient } from "./src/Utils/RedisClient.js";
 import { save2Redis, saveTest2db } from "./src/Utils/RedisUtils.js";
 import { LogTrialResult, LogRawExecution, LogTestCaseResult } from "./src/Controllers/ExecutionLogs.js"
+import client from "prom-client"
 
 const app = express();
+const register = new client.Registry();
 
+client.collectDefaultMetrics({
+  register,
+  prefix: "judge_",
+});
+
+export const httpRequestsTotal = new client.Counter({
+  name: "judge_http_requests_total",
+  help: "Total HTTP requests",
+  labelNames: ["method", "route", "status"],
+  registers: [register],
+});
+
+export const httpRequestDuration = new client.Histogram({
+  name: "judge_http_request_duration_seconds",
+  help: "HTTP request duration",
+  labelNames: ["method", "route", "status"],
+  buckets: [0.05, 0.1, 0.3, 0.5, 1, 2, 5],
+  registers: [register],
+});
 
 app.use(cors({
   origin: "http://localhost:5173",
@@ -20,79 +41,86 @@ app.use(cors({
   allowedHeaders: ["Content-Type", "Authorization"]
 }));
 
+app.get("/metrics", async (req, res) => {
+  res.setHeader("Content-Type", register.contentType);
+  const metrics = await register.metrics();
+  res.send(metrics);
+})
+
 app.use(cookieParser());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
-(async () => {
-  try {
-    await initkafka();
-    console.log(" Kafka ready, subscribing to topics...");
-    await connectRedis();
-    await consumer.subscribe({ topic: "job_results", fromBeginning: true });
-    await consumer.subscribe({ topic: "blocked_exec", fromBeginning: true });
-    await consumer.subscribe({ topic: "Actually_runs_result", fromBeginning: true })
-    await consumer.run({
-      eachMessage: async ({ topic, message }) => {
-        const value = message.value.toString();
-
-        let data = {};
-        try {
-          data = JSON.parse(value);
-        } catch {
-          data = { raw: value };
-        }
-        switch (topic) {
-          case "job_results":
-            console.log(" Job result received:", data);
-            if (data?.testCaseId) {
-              await emitTestCaseresult(data);
-              await save2Redis(data)
-              if (data.testCaseNumber !== data.totalTestCases) {
-                console.log(" this is final test case no")
-              } else {
-                const key = `job:${data.jobId}`;
-                const all = await RedisClient.hGetAll(key);
-                console.log("all data:",all)
-                // await saveTest2db(all)
-                await LogTestCaseResult(all)
-                // console.log("this is not final test case no")
-              }
-            }
-            else if (data?.jobId !== "") {
-              console.log("No test cases, single job result");
-              await emitTestresult(data);
-              await LogRawExecution(data)
-            }
-            else {
-              // nothing to do
-              return;
-            }
-            break;
-
-          case "blocked_exec":
-            console.log(" Blocked execution:", data);
-            await emitBlockedresult(data);
-            break;
-
-          case "Actually_runs_result":
-            console.log(" Actual run result:", data);
-            await emitActuallyRunResult(data);
-
-            await LogTrialResult(data)
-            break;
-
-          default:
-            console.warn(" Unknown topic received:", topic, data);
-            break;
-        }
-      },
-    });
-
-  } catch (err) {
-    console.error(" Kafka initialization failed:", err);
-  }
-})();
+await connectRedis();
+// (async () => {
+//   try {
+//     // await initkafka();
+//     // console.log(" Kafka ready, subscribing to topics...");
+//     await connectRedis();
+//     await consumer.subscribe({ topic: "job_results", fromBeginning: true });
+//     await consumer.subscribe({ topic: "blocked_exec", fromBeginning: true });
+//     await consumer.subscribe({ topic: "Actually_runs_result", fromBeginning: true })
+//     await consumer.run({
+//       eachMessage: async ({ topic, message }) => {
+//         const value = message.value.toString();
+//
+//         let data = {};
+//         try {
+//           data = JSON.parse(value);
+//         } catch {
+//           data = { raw: value };
+//         }
+//         switch (topic) {
+//           case "job_results":
+//             console.log(" Job result received:", data);
+//             if (data?.testCaseId) {
+//               await emitTestCaseresult(data);
+//               await save2Redis(data)
+//               if (data.testCaseNumber !== data.totalTestCases) {
+//                 console.log(" this is final test case no")
+//               } else {
+//                 const key = `job:${data.jobId}`;
+//                 const all = await RedisClient.hGetAll(key);
+//                 console.log("all data:", all)
+//                 await saveTest2db(all)
+//                 await LogTestCaseResult(all)
+//                 // console.log("this is not final test case no")
+//               }
+//             }
+//             else if (data?.jobId !== "") {
+//               console.log("No test cases, single job result");
+//               await emitTestresult(data);
+//               await LogRawExecution(data)
+//             }
+//             else {
+//               // nothing to do
+//               return;
+//             }
+//             break;
+//
+//           case "blocked_exec":
+//             console.log(" Blocked execution:", data);
+//             await emitBlockedresult(data);
+//             break;
+//
+//           case "Actually_runs_result":
+//             console.log(" Actual run result:", data);
+//             await emitActuallyRunResult(data);
+//
+//             await LogTrialResult(data)
+//             break;
+//
+//           default:
+//             console.warn(" Unknown topic received:", topic, data);
+//             break;
+//         }
+//       },
+//     });
+//
+//   } catch (err) {
+//     console.error(" Kafka initialization failed:", err);
+//   }
+// })();
 
 app.get("/", (req, res) => {
   res.send("Server is up and running");
