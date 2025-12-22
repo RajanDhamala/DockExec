@@ -9,44 +9,24 @@ import CodeRouter from "./src/Routes/CodeRoute.js"
 import { connectRedis, RedisClient } from "./src/Utils/RedisClient.js";
 import { save2Redis, saveTest2db } from "./src/Utils/RedisUtils.js";
 import { LogTrialResult, LogRawExecution, LogTestCaseResult } from "./src/Controllers/ExecutionLogs.js"
-import client from "prom-client"
+import client from "prom-client";
+
+
 
 const app = express();
-const register = new client.Registry();
 
-client.collectDefaultMetrics({
-  register,
-  prefix: "judge_",
-});
-
-export const httpRequestsTotal = new client.Counter({
-  name: "judge_http_requests_total",
-  help: "Total HTTP requests",
-  labelNames: ["method", "route", "status"],
-  registers: [register],
-});
-
-export const httpRequestDuration = new client.Histogram({
-  name: "judge_http_request_duration_seconds",
-  help: "HTTP request duration",
-  labelNames: ["method", "route", "status"],
-  buckets: [0.05, 0.1, 0.3, 0.5, 1, 2, 5],
-  registers: [register],
-});
-
-app.use(cors({
-  origin: "http://localhost:5173",
-  credentials: true,
-  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"]
-}));
+client.collectDefaultMetrics({ register: client.register });
 
 app.get("/metrics", async (req, res) => {
-  res.setHeader("Content-Type", register.contentType);
-  const metrics = await register.metrics();
-  res.send(metrics);
-})
-
+  try {
+    res.setHeader("Content-Type", client.register.contentType);
+    const metrics = await client.register.metrics();
+    res.send(metrics);
+  } catch (err) {
+    console.error("Error fetching metrics:", err);
+    res.status(500).send("Internal Server Error");
+  }
+});
 app.use(cookieParser());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());

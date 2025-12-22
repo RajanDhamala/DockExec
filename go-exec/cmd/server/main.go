@@ -15,6 +15,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/segmentio/kafka-go"
 )
 
@@ -81,6 +83,18 @@ const (
 	maxExecTime    = 3 * time.Second
 )
 
+var inventoryAccessCounter = prometheus.NewCounterVec(
+	prometheus.CounterOpts{
+		Name: "dental_inventory_access_total",
+		Help: "Total number of times inventory items are accessed",
+	},
+	[]string{"item_type"},
+)
+
+func init() {
+	prometheus.MustRegister(inventoryAccessCounter)
+}
+
 func main() {
 	_ = godotenv.Load("./.env")
 
@@ -99,10 +113,23 @@ func main() {
 	go consumeRunCode(broker)       // New test case consumer - UPDATED NAME
 	go consumeActualrunCode(broker) // Runs code without test cases
 	// HTTP server
+
+	// Gin server
 	r := gin.Default()
+
+	r.GET("/metrics", gin.WrapH(promhttp.Handler()))
+	r.GET("/test", func(c *gin.Context) {
+		c.JSON(200, gin.H{"message": "Go Executor is running"})
+	})
+	r.GET("/access_inventory/:item_type", func(c *gin.Context) {
+		itemType := c.Param("item_type")
+		inventoryAccessCounter.WithLabelValues(itemType).Inc()
+		c.JSON(200, gin.H{"message": "Accessed " + itemType})
+	})
 	routes.RegisterRoutes(r)
 	fmt.Println(" Go Executor running on port", port)
-	r.Run(":" + port)
+
+	r.Run("0.0.0.0:" + port)
 }
 
 func consumeActualrunCode(broker string) {
