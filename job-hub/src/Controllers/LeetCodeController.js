@@ -53,13 +53,12 @@ const GetData = asyncHandler(async (req, res) => {
 });
 
 
-const RunCode = asyncHandler(async (req, res) => {
+const TestPrintCode = asyncHandler(async (req, res) => {
   const { code, language, problemId, socketId } = req.body;
-  const { type } = req.params;
   const uuid = uuidv4();
 
-  if (!code || !language || !type || !problemId || !socketId) {
-    throw new ApiError(400, 'please include type, language, code, type, and problemId in request');
+  if (!code || !language || !problemId || !socketId) {
+    throw new ApiError(400, 'please include type, language, code,  and problemId in request');
   }
 
   const ProblemKey = `problem:${problemId}`;
@@ -83,10 +82,10 @@ const RunCode = asyncHandler(async (req, res) => {
   }
 
   // Produce execution job
-  const testCaseToSend = type === "run" ? problemData.testCases[0] : problemData.testCases;
+  const testCaseToSend = problemData.testCases[0]
 
   await producer.send({
-    topic: type === "submit" ? "test_code" : "Runs_code",
+    topic: type = "print_test_submission",
     messages: [{
       value: JSON.stringify({
         code,
@@ -106,6 +105,61 @@ const RunCode = asyncHandler(async (req, res) => {
   console.log("code produced for running", type)
   return res.send(new ApiResponse(200, 'code sent for running', type === "submit" ? uuid : problemData));
 });
+
+
+const AllTestCases = asyncHandler(async (req, res) => {
+  const { code, language, problemId, socketId } = req.body;
+  const uuid = uuidv4();
+
+  if (!code || !language || !problemId || !socketId) {
+    throw new ApiError(400, 'please include  language, code and problemId in request');
+  }
+
+  const ProblemKey = `problem:${problemId}`;
+  let problemData;
+
+  try {
+    const cached = await RedisClient.get(ProblemKey);
+    if (cached) {
+      problemData = JSON.parse(cached);
+      console.log("problem cached found btw")
+    }
+    else {
+      problemData = await Problem.findById(problemId);
+      if (!problemData) throw new ApiError(404, 'Problem not found');
+      await RedisClient.set(ProblemKey, JSON.stringify(problemData), { EX: 120 });
+    }
+  } catch {
+    problemData = await Problem.findById(problemId);
+    if (!problemData) throw new ApiError(404, 'Problem not found');
+    await RedisClient.set(ProblemKey, JSON.stringify(problemData), { EX: 120 });
+  }
+
+  // Produce execution job
+  const testCaseToSend = problemData.testCases;
+
+  await producer.send({
+    topic: type = "all_cases_submission",
+    messages: [{
+      value: JSON.stringify({
+        code,
+        language,
+        id: uuid,
+        testCase: testCaseToSend,
+        socketId,
+        userId: req.user.id,
+        problemId: problemData._id,
+        function_name: problemData.function_name,
+        parameters: problemData.parameters,
+        wrapper_type: problemData.wrapper_type
+      })
+    }]
+
+  });
+  console.log("code produced for running", type)
+  return res.send(new ApiResponse(200, 'code sent for running', type === "submit" ? uuid : problemData));
+});
+
 
 
 const GetSubmissons = asyncHandler(async (req, res) => {
@@ -138,5 +192,5 @@ const GetSubmissons = asyncHandler(async (req, res) => {
 
 
 export {
-  RunCode, getList, GetData, GetSubmissons
+  TestPrintCode, getList, GetData, GetSubmissons, AllTestCases
 }
