@@ -20,7 +20,7 @@ import (
 	"github.com/segmentio/kafka-go"
 )
 
-type Job struct {
+type ProgrammizRequest struct {
 	JobID     string `json:"jobId"`
 	SocketId  string `json:"socketId"`
 	Code      string `json:"code"`
@@ -29,7 +29,7 @@ type Job struct {
 	ProblemId string `json:"problemId"`
 }
 
-type Result struct {
+type ProgrammizResponse struct {
 	SocketId  string  `json:"socketId"`
 	JobID     string  `json:"jobId"`
 	Status    string  `json:"status"`
@@ -41,8 +41,31 @@ type Result struct {
 	ProblemId string  `json:"problemId"`
 }
 
-// struct for test case jobs
-type TestCaseJob struct {
+type SingleTestCaseRequest struct {
+	JobID       string `json:"jobId"`
+	Language    string `json:"language"`
+	Input       string `json:"input"`
+	Expected    string `json:"expected"`
+	WrappedCode string `json:"wrappedCode"`
+	SocketId    string `json:"socketId"`
+	UserId      string `json:"userId"`
+	ProblemId   string `json:"problemId"`
+}
+
+type SingleTestCaseResponse struct {
+	UserId    string  `json:"userId"`
+	ProblemId string  `json:"problemId"`
+	JobID     string  `json:"jobId"`
+	Language  string  `json:"language"`
+	Output    string  `json:"actualOutput"`
+	Status    string  `json:"status"`
+	Duration  float64 `json:"duration"`
+	Timestamp string  `json:"timestamp"`
+	SocketId  string  `json:"socketId"`
+	Code      string  `json:"code"`
+}
+
+type AllTestCasesRequest struct {
 	JobID          string `json:"jobId"`
 	TestCaseID     string `json:"testCaseId"`
 	TestCaseNumber int    `json:"testCaseNumber"`
@@ -57,8 +80,7 @@ type TestCaseJob struct {
 	OriginalCode   string `json:"orginalCode"`
 }
 
-// struct for test case results
-type TestCaseResult struct {
+type AllTestCasesResponse struct {
 	JobID          string  `json:"jobId"`
 	TestCaseID     string  `json:"testCaseId"`
 	TestCaseNumber int     `json:"testCaseNumber"`
@@ -83,16 +105,16 @@ const (
 	maxExecTime    = 3 * time.Second
 )
 
-var inventoryAccessCounter = prometheus.NewCounterVec(
+var microserviceAccessCounter = prometheus.NewCounterVec(
 	prometheus.CounterOpts{
-		Name: "dental_inventory_access_total",
-		Help: "Total number of times inventory items are accessed",
+		Name: "docexec_microservice",
+		Help: "Total number of times microservice items are accessed",
 	},
 	[]string{"item_type"},
 )
 
 func init() {
-	prometheus.MustRegister(inventoryAccessCounter)
+	prometheus.MustRegister(microserviceAccessCounter)
 }
 
 func main() {
@@ -109,9 +131,9 @@ func main() {
 	}
 
 	// Start both Kafka consumers
-	go consumeExecCode(broker)      // Original consumer
-	go consumeRunCode(broker)       // New test case consumer - UPDATED NAME
-	go consumeActualrunCode(broker) // Runs code without test cases
+	go consume_Programmiz_Case(broker) // Original consumer
+	go consume_OneTest_Case(broker)    // New test case consumer - UPDATED NAME
+	go consume_AllTest_Case(broker)    // Runs code without test cases
 	// HTTP server
 
 	// Gin server
@@ -123,7 +145,7 @@ func main() {
 	})
 	r.GET("/access_inventory/:item_type", func(c *gin.Context) {
 		itemType := c.Param("item_type")
-		inventoryAccessCounter.WithLabelValues(itemType).Inc()
+		microserviceAccessCounter.WithLabelValues(itemType).Inc()
 		c.JSON(200, gin.H{"message": "Accessed " + itemType})
 	})
 	routes.RegisterRoutes(r)
@@ -132,21 +154,21 @@ func main() {
 	r.Run("0.0.0.0:" + port)
 }
 
-func consumeActualrunCode(broker string) {
+func consume_OneTest_Case(broker string) {
 	reader := kafka.NewReader(kafka.ReaderConfig{
 		Brokers: []string{broker},
-		Topic:   "Actually_Runs_code",
+		Topic:   "print_test_execution",
 		GroupID: "multi-lang-executor",
 	})
 	defer reader.Close()
 
 	writer := kafka.NewWriter(kafka.WriterConfig{
 		Brokers: []string{broker},
-		Topic:   "Actually_runs_result",
+		Topic:   "print_test_result",
 	})
 	defer writer.Close()
 
-	fmt.Println(" Listening for jobs on 'actualrun_code'...")
+	fmt.Println(" Listening for jobs on 'print_test_execution'...")
 
 	for {
 		msg, err := reader.ReadMessage(context.Background())
@@ -156,7 +178,7 @@ func consumeActualrunCode(broker string) {
 			continue
 		}
 
-		var job Job
+		job := SingleTestCaseRequest{}
 		if err := json.Unmarshal(msg.Value, &job); err != nil {
 			fmt.Println("️ Invalid job JSON:", err)
 			continue
@@ -164,19 +186,21 @@ func consumeActualrunCode(broker string) {
 
 		fmt.Printf("️ Executing %s job %s...\n", job.Language, job.JobID)
 
-		output, status, execDuration := executeCode(job.Code, job.Language)
+		output, status, execDuration := executeCode(job.WrappedCode, job.Language)
 		fmt.Println("output:", output)
 		fmt.Println("problemId:", job.ProblemId)
-		result := Result{
+
+		result := SingleTestCaseResponse{
 			SocketId:  job.SocketId,
 			JobID:     job.JobID,
 			Status:    status,
 			Output:    output,
 			Duration:  execDuration,
 			UserId:    job.UserId,
-			Code:      job.Code,
+			Code:      job.WrappedCode,
 			Language:  job.Language,
 			ProblemId: job.ProblemId,
+			Timestamp: time.Now().UTC().Format("2006-01-02 15:04:05"),
 		}
 
 		data, _ := json.Marshal(result)
@@ -195,17 +219,17 @@ func consumeActualrunCode(broker string) {
 }
 
 // Original consumer for exec_code topic
-func consumeExecCode(broker string) {
+func consume_Programmiz_Case(broker string) {
 	reader := kafka.NewReader(kafka.ReaderConfig{
 		Brokers: []string{broker},
-		Topic:   "exec_code",
+		Topic:   "programiz_execution",
 		GroupID: "multi-lang-executor",
 	})
 	defer reader.Close()
 
 	writer := kafka.NewWriter(kafka.WriterConfig{
 		Brokers: []string{broker},
-		Topic:   "job_results",
+		Topic:   "programiz_result",
 	})
 	defer writer.Close()
 
@@ -219,7 +243,7 @@ func consumeExecCode(broker string) {
 			continue
 		}
 
-		var job Job
+		job := ProgrammizRequest{}
 		if err := json.Unmarshal(msg.Value, &job); err != nil {
 			fmt.Println("️ Invalid job JSON:", err)
 			continue
@@ -229,7 +253,7 @@ func consumeExecCode(broker string) {
 
 		output, status, execDuration := executeCode(job.Code, job.Language)
 
-		result := Result{
+		result := ProgrammizResponse{
 			SocketId: job.SocketId,
 			JobID:    job.JobID,
 			Status:   status,
@@ -258,17 +282,17 @@ func consumeExecCode(broker string) {
 }
 
 // New consumer for run_code topic (test cases)
-func consumeRunCode(broker string) {
+func consume_AllTest_Case(broker string) {
 	reader := kafka.NewReader(kafka.ReaderConfig{
 		Brokers: []string{broker},
-		Topic:   "run_code",
+		Topic:   "all_test_execution",
 		GroupID: "test-case-executor",
 	})
 	defer reader.Close()
 
 	writer := kafka.NewWriter(kafka.WriterConfig{
 		Brokers: []string{broker},
-		Topic:   "job_results",
+		Topic:   "all_test_result",
 	})
 	defer writer.Close()
 
@@ -282,7 +306,7 @@ func consumeRunCode(broker string) {
 			continue
 		}
 
-		var testJob TestCaseJob
+		var testJob AllTestCasesRequest
 		if err := json.Unmarshal(msg.Value, &testJob); err != nil {
 			fmt.Println("️ Invalid test case JSON:", err)
 			continue
@@ -305,7 +329,7 @@ func consumeRunCode(broker string) {
 		}
 
 		// Creating test case result
-		testResult := TestCaseResult{
+		testResult := AllTestCasesResponse{
 			JobID:          testJob.JobID,
 			TestCaseID:     testJob.TestCaseID,
 			TestCaseNumber: testJob.TestCaseNumber,
