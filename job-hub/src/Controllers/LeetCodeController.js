@@ -56,6 +56,7 @@ const GetData = asyncHandler(async (req, res) => {
 const TestPrintCode = asyncHandler(async (req, res) => {
   const { code, language, problemId, socketId } = req.body;
   const uuid = uuidv4();
+  console.log(req.body)
 
   if (!code || !language || !problemId || !socketId) {
     throw new ApiError(400, 'please include type, language, code,  and problemId in request');
@@ -85,7 +86,7 @@ const TestPrintCode = asyncHandler(async (req, res) => {
   const testCaseToSend = problemData.testCases[0]
 
   await producer.send({
-    topic: type = "print_test_submission",
+    topic:  "print_test_submission",
     messages: [{
       value: JSON.stringify({
         code,
@@ -102,8 +103,8 @@ const TestPrintCode = asyncHandler(async (req, res) => {
     }]
 
   });
-  console.log("code produced for running", type)
-  return res.send(new ApiResponse(200, 'code sent for running', type === "submit" ? uuid : problemData));
+  console.log("code produced for running")
+  return res.send(new ApiResponse(200, 'code sent for running', {uuid,problemData}));
 });
 
 
@@ -139,7 +140,7 @@ const AllTestCases = asyncHandler(async (req, res) => {
   const testCaseToSend = problemData.testCases;
 
   await producer.send({
-    topic: type = "all_cases_submission",
+    topic: "all_cases_submission",
     messages: [{
       value: JSON.stringify({
         code,
@@ -156,8 +157,8 @@ const AllTestCases = asyncHandler(async (req, res) => {
     }]
 
   });
-  console.log("code produced for running", type)
-  return res.send(new ApiResponse(200, 'code sent for running', type === "submit" ? uuid : problemData));
+  console.log("code produced for running")
+  return res.send(new ApiResponse(200, 'code sent for running',uuid));
 });
 
 

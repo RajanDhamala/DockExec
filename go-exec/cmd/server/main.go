@@ -286,7 +286,7 @@ func consume_AllTest_Case(broker string) {
 	reader := kafka.NewReader(kafka.ReaderConfig{
 		Brokers: []string{broker},
 		Topic:   "all_test_execution",
-		GroupID: "test-case-executor",
+		GroupID: "test-case-executon",
 	})
 	defer reader.Close()
 
