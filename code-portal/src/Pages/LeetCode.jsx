@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import Editor from "@monaco-editor/react";
-import { Play, Upload, RotateCcw, Code2, CheckCircle2, Clock, BarChart3, X, AlertCircle,XCircle,ChevronRight } from "lucide-react";
+import { Play, Upload, RotateCcw, Code2, CheckCircle2, Clock, BarChart3, X, AlertCircle, XCircle, ChevronRight } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
 import { Link } from "react-router-dom";
@@ -202,7 +202,7 @@ function TestResultsPanel({ testResults, allTestsCompleted, onClose }) {
 }
 
 // Problem Panel Component
-function ProblemPanel({ problem, onProblemChange, currentProblemId, SubmissonData=[] }) {
+function ProblemPanel({ problem, onProblemChange, currentProblemId, SubmissonData = [] }) {
   const [activeTab, setActiveTab] = useState("description");
 
   const difficultyColor = {
@@ -215,7 +215,7 @@ function ProblemPanel({ problem, onProblemChange, currentProblemId, SubmissonDat
   const getStatusInfo = (item) => {
     // Logic: If passed all test cases, it's a success
     const isAllPassed = item.passedNo === item.totalTestCases && item.totalTestCases > 0;
-    
+
     if (isAllPassed) {
       return {
         icon: <CheckCircle2 className="w-5 h-5 text-green-500" />,
@@ -336,16 +336,16 @@ function ProblemPanel({ problem, onProblemChange, currentProblemId, SubmissonDat
           <div className="p-4 lg:p-6 h-full flex flex-col">
             {/* Problem Info Header */}
             <div className="flex items-center justify-between gap-4 mb-6 pb-6 border-b border-gray-800">
-               <div>
-                  <h2 className="text-xl font-bold text-white mb-1.5">{problem.title}</h2>
-                  <span className={`px-2 py-0.5 rounded text-[10px] uppercase tracking-wider font-bold border ${difficultyColor[problem.difficulty]}`}>
-                    {problem.difficulty}
-                  </span>
-               </div>
-               <div className="text-right">
-                  <div className="text-sm text-gray-400">Total Submissions</div>
-                  <div className="text-2xl font-mono text-white">{SubmissonData.length ||null}</div>
-               </div>
+              <div>
+                <h2 className="text-xl font-bold text-white mb-1.5">{problem.title}</h2>
+                <span className={`px-2 py-0.5 rounded text-[10px] uppercase tracking-wider font-bold border ${difficultyColor[problem.difficulty]}`}>
+                  {problem.difficulty}
+                </span>
+              </div>
+              <div className="text-right">
+                <div className="text-sm text-gray-400">Total Submissions</div>
+                <div className="text-2xl font-mono text-white">{SubmissonData.length || null}</div>
+              </div>
             </div>
 
             {SubmissonData.length === 0 ? (
@@ -381,7 +381,7 @@ function ProblemPanel({ problem, onProblemChange, currentProblemId, SubmissonDat
                           hour: "2-digit",
                           minute: "2-digit"
                         });
-                        
+
                         return (
                           <tr key={item._id || index} className="group hover:bg-gray-800/40 transition-colors">
                             <td className="px-6 py-4">
@@ -399,11 +399,11 @@ function ProblemPanel({ problem, onProblemChange, currentProblemId, SubmissonDat
                             </td>
                             <td className="px-6 py-4 text-gray-400 font-mono text-xs">
                               <div className="flex items-center gap-1">
-                                 <span className={statusInfo.text === "Passed" ? "text-green-400" : "text-gray-200"}>
-                                    {item.passedNo}
-                                 </span>
-                                 <span className="opacity-40">/</span>
-                                 <span>{item.totalTestCases}</span>
+                                <span className={statusInfo.text === "Passed" ? "text-green-400" : "text-gray-200"}>
+                                  {item.passedNo}
+                                </span>
+                                <span className="opacity-40">/</span>
+                                <span>{item.totalTestCases}</span>
                               </div>
                             </td>
                             <td className="px-6 py-4 text-gray-500 text-xs whitespace-nowrap">
@@ -651,31 +651,31 @@ export default function LeetCode() {
   })
 
   // Initialize code when problem or language changes
-useEffect(() => {
-  if (!currentProblem) return;
+  useEffect(() => {
+    if (!currentProblem) return;
 
-  // reset editor state
-  const template = currentProblem.languageTemplates?.[language] || "";
-  setCode(template);
-  setConsoleOutput([]);
-  setTestResults([]);
-  setShowTestResults(false);
-  setShowPopup(false);
-  setExecutionData(null);
+    // reset editor state
+    const template = currentProblem.languageTemplates?.[language] || "";
+    setCode(template);
+    setConsoleOutput([]);
+    setTestResults([]);
+    setShowTestResults(false);
+    setShowPopup(false);
+    setExecutionData(null);
 
-  const handleKeyDown = (e) => {
-    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") {
-      e.preventDefault();
-      console.log("save button clicked btw");
-    }
-  };
+    const handleKeyDown = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") {
+        e.preventDefault();
+        console.log("save button clicked btw");
+      }
+    };
 
-  window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("keydown", handleKeyDown);
 
-  return () => {
-    window.removeEventListener("keydown", handleKeyDown);
-  };
-}, [currentProblem, language]);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [currentProblem, language]);
 
 
   // Set initial problem
@@ -790,7 +790,7 @@ useEffect(() => {
     setConsoleOutput([]);
     setExecutionData(null); // Reset execution data
 
-    const posts = await axios.post("http://localhost:8000/code/exec/run", {
+    const posts = await axios.post("http://localhost:8000/code/testPrint", {
       code: code,
       language: language,
       problemId: currentProblemId,
@@ -814,7 +814,7 @@ useEffect(() => {
     }
     setShowPopup(true);
 
-    const posts = await axios.post("http://localhost:8000/code/exec/submit", {
+    const posts = await axios.post("http://localhost:8000/code/Alltest_Cases", {
       code: code,
       language: language,
       problemId: currentProblemId,

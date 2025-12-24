@@ -161,11 +161,11 @@ export default function WriteCode() {
       setDuration(null);
     };
 
-    socket.on("test_result", handleTestResult);
+    socket.on("programmiz_result", handleTestResult);
     socket.on("blocked_result", handleBlockedResult);
     
     return () => {
-      socket.off("test_result", handleTestResult);
+      socket.off("programmiz_result", handleTestResult);
       socket.off("blocked_result", handleBlockedResult);
     };
   }, [socket]);

@@ -17,7 +17,7 @@ while not consumer:
     try:
         # job_requests direcly executes raw user code no test cases
         consumer = KafkaConsumer(
-            'job_requests',
+            'programiz_submission',
             bootstrap_servers='192.168.18.26:29092',
             group_id='worker-bee',
             auto_offset_reset='earliest'
@@ -293,7 +293,7 @@ def publish_blocked_result(result_data, topic="blocked_exec"):
                  jobId, socketId, reason, language, code, userId, etc.
     """
     try:
-        producer.send(topic,result_data)
+        producer.send(topic, result_data)
         producer.flush()
         print(f"Blocked job {result_data.get('jobId')} published to {
               topic}. Reason: {result_data.get('reason')}")
@@ -302,7 +302,7 @@ def publish_blocked_result(result_data, topic="blocked_exec"):
 
 
 # Consumer: job_requests (safety check only)
-def consume_job_requests():
+def consume_programmiz_requests():
     for message in consumer:
         try:
             job = json.loads(message.value.decode())
@@ -329,7 +329,7 @@ def consume_job_requests():
                 "code": code,
                 "socketId": socketId
             }
-            producer.send("exec_code", result_data)
+            producer.send("programiz_execution", result_data)
             producer.flush()
         else:
             print(f"Job {job_id} is BLOCKED. Reason: {reason}")
@@ -346,12 +346,12 @@ def consume_job_requests():
 
 
 # Consumer: test_code (creates per-test-case jobs with wrappers)
-def consume_test_code():
+def consume_alltest_cases():
     run_consumer = None
     while not run_consumer:
         try:
             run_consumer = KafkaConsumer(
-                'test_code',
+                'all_cases_submission',
                 bootstrap_servers='192.168.18.26 :29092',
                 group_id='runner-bee',
                 auto_offset_reset='earliest'
@@ -424,9 +424,10 @@ def consume_test_code():
                 "problemId": problem_id,
                 "orginalCode": code if i == 0 else ""
             }
+            print(tc.get('expected'))
 
             try:
-                producer.send("run_code", test_case_job)
+                producer.send("all_test_execution", test_case_job)
                 producer.flush()
                 print("sending each test case", test_case_job.testCaseNumber)
             except Exception as e:
@@ -438,12 +439,12 @@ def consume_test_code():
 
 
 # Consumer: Runs_code (direct execution with prints allowed)
-def consume_run_code():
+def consume_printone_case():
     run_consumer = None
     while not run_consumer:
         try:
             run_consumer = KafkaConsumer(
-                'Runs_code',
+                'print_test_submission',
                 bootstrap_servers='192.168.18.26:29092',
                 group_id='runner-bee',
                 auto_offset_reset='earliest'
@@ -505,15 +506,16 @@ def consume_run_code():
         }
         print("problem is sent:", problem_id)
         print("language iz:", language)
-        producer.send("Actually_Runs_code", structured_job)
+        producer.send("print_test_execution", structured_job)
         producer.flush()
         print("print + only one test case allowed", structured_job)
 
 
 # Starting all consumers in parallel
-threading.Thread(target=consume_job_requests, daemon=True).start()
-threading.Thread(target=consume_run_code, daemon=True).start()
-threading.Thread(target=consume_test_code, daemon=True).start()
+threading.Thread(target=consume_programmiz_requests, daemon=True).start()
+threading.Thread(target=consume_alltest_cases, daemon=True).start()
+threading.Thread(target=consume_printone_case, daemon=True).start()
+
 
 # Keep the main thread alive
 while True:
