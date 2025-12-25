@@ -690,7 +690,7 @@ export default function LeetCode() {
   useEffect(() => {
     if (!socket) return;
 
-    const handleTestResult = (data) => {
+    const handleAlltestCases = (data) => {
       console.log("test result executed", data);
 
       // Check if this is a new job - if so, reset results
@@ -755,12 +755,14 @@ export default function LeetCode() {
       setIsRunning(false);
     };
 
-    socket.on("test_result", handleTestResult);
+    socket.on("print_test_result", handleRunResult);
+    socket.on("all_test_result", handleAlltestCases);
     socket.on("actual_run_result", handleRunResult);
     socket.on("blocked_result", handleBlockedResult); // NEW: Listen for blocked results
 
     return () => {
-      socket.off("test_result", handleTestResult);
+      socket.off("print_test_result", handleRunResult);
+      socket.off("all_test_result", handleAlltestCases);
       socket.off("actual_run_result", handleRunResult);
       socket.off("blocked_result", handleBlockedResult); // NEW: Cleanup
     };

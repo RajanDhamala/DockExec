@@ -499,13 +499,12 @@ def consume_printone_case():
         structured_job = {
             "jobId": job_id,
             "socketId": socket_id,
-            "code": wrapped,
+            "wrappedCode": wrapped,
             "language": language,
             "userId": user_id,
             "problemId": problem_id
         }
-        print("problem is sent:", problem_id)
-        print("language iz:", language)
+        print("wrapped code is", wrapped)
         producer.send("print_test_execution", structured_job)
         producer.flush()
         print("print + only one test case allowed", structured_job)

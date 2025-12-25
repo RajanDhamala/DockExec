@@ -85,13 +85,13 @@ app.use(express.json());
             console.log("we got data ok buddy", data)
             console.log("No test cases, single job result");
             await emitSingleTestresult(data);
-            await LogRawExecution(data)
+            await LogTrialResult(data)
 
           case "programiz_result":
             // this gets the result form the programmiz style execution
             console.log("programmiz code result:", data);
             await emitProgrammizResult(data);
-            // await LogTrialResult(data)
+            await LogRawExecution(data)
             break;
 
           default:

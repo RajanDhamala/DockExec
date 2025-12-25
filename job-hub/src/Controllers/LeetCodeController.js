@@ -86,7 +86,7 @@ const TestPrintCode = asyncHandler(async (req, res) => {
   const testCaseToSend = problemData.testCases[0]
 
   await producer.send({
-    topic:  "print_test_submission",
+    topic: "print_test_submission",
     messages: [{
       value: JSON.stringify({
         code,
@@ -104,7 +104,7 @@ const TestPrintCode = asyncHandler(async (req, res) => {
 
   });
   console.log("code produced for running")
-  return res.send(new ApiResponse(200, 'code sent for running', {uuid,problemData}));
+  return res.send(new ApiResponse(200, 'code sent for running', { uuid, problemData }));
 });
 
 
@@ -138,10 +138,12 @@ const AllTestCases = asyncHandler(async (req, res) => {
 
   // Produce execution job
   const testCaseToSend = problemData.testCases;
-
+  const submissionsKey = `submissions:${req.user.id}:${problemData._id}`;
+  await RedisClient.del(submissionsKey);
   await producer.send({
     topic: "all_cases_submission",
     messages: [{
+
       value: JSON.stringify({
         code,
         language,
@@ -158,7 +160,7 @@ const AllTestCases = asyncHandler(async (req, res) => {
 
   });
   console.log("code produced for running")
-  return res.send(new ApiResponse(200, 'code sent for running',uuid));
+  return res.send(new ApiResponse(200, 'code sent for running', uuid));
 });
 
 

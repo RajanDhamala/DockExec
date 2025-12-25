@@ -3,7 +3,7 @@ import { getIO } from "./SocketProvider.js";
 const emitSingleTestresult = async (data) => {
   try {
     const io = getIO();
-    io.to(data.socketId).emit("test_result", data)
+    io.to(data.socketId).emit("print_test_result", data)
     console.log("emmited to ", data.socketId)
   } catch (err) {
     console.error("️ Cannot emit test result:", err.message);
@@ -28,7 +28,7 @@ const emitAllCaseResult = async (data) => {
       console.log("Skipping empty/dummy test result");
       return;
     } else {
-      io.to(data.socketId).emit("test_result", data);
+      io.to(data.socketId).emit("all_test_result", data);
 
     }
 
