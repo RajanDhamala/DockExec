@@ -1,10 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Editor from "@monaco-editor/react";
 import { Play, Upload, RotateCcw, Code2, CheckCircle2, Clock, BarChart3, X, AlertCircle, XCircle, ChevronRight } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import axios from "axios";
 import { Link } from "react-router-dom";
-
+import { toast } from "react-hot-toast";
 import useSocketStore from "@/ZustandStore/SocketStore";
 
 const fetchProblems = async () => {
@@ -16,6 +16,13 @@ const fetchProblemDetails = async (id) => {
   const { data } = await axios.get(`http://localhost:8000/code/getProblem/${id}`);
   return data.data;
 };
+
+const getUserCode = async ({ testCaseId, problemId }) => {
+  const { data } = await axios.get(`http://localhost:8000/code/getUrCode/${testCaseId}/${problemId}`, {
+    withCredentials: true
+  })
+  return data.data
+}
 
 
 const fetchSubmissionData = async (problemid) => {
@@ -202,7 +209,7 @@ function TestResultsPanel({ testResults, allTestsCompleted, onClose }) {
 }
 
 // Problem Panel Component
-function ProblemPanel({ problem, onProblemChange, currentProblemId, SubmissonData = [] }) {
+function ProblemPanel({ problem, onProblemChange, currentProblemId, SubmissonData = [], handelThegetusrCode }) {
   const [activeTab, setActiveTab] = useState("description");
 
   const difficultyColor = {
@@ -359,72 +366,116 @@ function ProblemPanel({ problem, onProblemChange, currentProblemId, SubmissonDat
                 </div>
               </div>
             ) : (
-              <div className="overflow-hidden rounded-xl border border-gray-800 bg-gray-900 shadow-sm">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-sm">
-                    <thead>
-                      <tr className="bg-gray-800/80 text-gray-400 border-b border-gray-700">
-                        <th className="px-6 py-4 font-medium whitespace-nowrap">Status</th>
-                        <th className="px-6 py-4 font-medium whitespace-nowrap">Language</th>
-                        <th className="px-6 py-4 font-medium whitespace-nowrap">Score</th>
-                        <th className="px-6 py-4 font-medium whitespace-nowrap">Date</th>
-                        <th className="px-6 py-4 font-medium text-right whitespace-nowrap">Details</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-800">
-                      {SubmissonData.map((item, index) => {
-                        const statusInfo = getStatusInfo(item);
-                        const formattedDate = new Date(item.createdAt).toLocaleDateString("en-US", {
-                          year: "numeric",
-                          month: "short",
-                          day: "numeric",
-                          hour: "2-digit",
-                          minute: "2-digit"
-                        });
+              <>
+                {/* Desktop table */}
+                <div className="overflow-hidden rounded-xl border border-gray-800 bg-gray-900 shadow-sm hidden lg:block">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-sm">
+                      <thead>
+                        <tr className="bg-gray-800/80 text-gray-400 border-b border-gray-700">
+                          <th className="px-6 py-4 font-medium whitespace-nowrap">Status</th>
+                          <th className="px-6 py-4 font-medium whitespace-nowrap">Language</th>
+                          <th className="px-6 py-4 font-medium whitespace-nowrap">Score</th>
+                          <th className="px-6 py-4 font-medium whitespace-nowrap">Date</th>
+                          <th className="px-6 py-4 font-medium text-right whitespace-nowrap">Details</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-800">
+                        {SubmissonData.map((item, index) => {
+                          const statusInfo = getStatusInfo(item);
+                          const formattedDate = new Date(item.createdAt).toLocaleDateString("en-US", {
+                            year: "numeric",
+                            month: "short",
+                            day: "numeric",
+                            hour: "2-digit",
+                            minute: "2-digit"
+                          });
 
-                        return (
-                          <tr key={item._id || index} className="group hover:bg-gray-800/40 transition-colors">
-                            <td className="px-6 py-4">
-                              <div className="flex items-center gap-3">
-                                {statusInfo.icon}
-                                <span className={`font-semibold ${statusInfo.textClass}`}>
-                                  {statusInfo.text}
+                          return (
+                            <tr key={item._id || index} className="group hover:bg-gray-800/40 transition-colors">
+                              <td className="px-6 py-4">
+                                <div className="flex items-center gap-3">
+                                  {statusInfo.icon}
+                                  <span className={`font-semibold ${statusInfo.textClass}`}>
+                                    {statusInfo.text}
+                                  </span>
+                                </div>
+                              </td>
+                              <td className="px-6 py-4">
+                                <span className="px-2 py-1 rounded bg-gray-800 text-xs text-gray-400 border border-gray-700 font-mono">
+                                  {item.language}
                                 </span>
-                              </div>
-                            </td>
-                            <td className="px-6 py-4">
-                              <span className="px-2 py-1 rounded bg-gray-800 text-xs text-gray-400 border border-gray-700 font-mono">
-                                {item.language}
-                              </span>
-                            </td>
-                            <td className="px-6 py-4 text-gray-400 font-mono text-xs">
-                              <div className="flex items-center gap-1">
-                                <span className={statusInfo.text === "Passed" ? "text-green-400" : "text-gray-200"}>
-                                  {item.passedNo}
-                                </span>
-                                <span className="opacity-40">/</span>
-                                <span>{item.totalTestCases}</span>
-                              </div>
-                            </td>
-                            <td className="px-6 py-4 text-gray-500 text-xs whitespace-nowrap">
-                              {formattedDate}
-                            </td>
-                            <td className="px-6 py-4 text-right">
-                              <button
-                                className="group/btn flex items-center gap-1 ml-auto text-blue-400 hover:text-blue-300 text-xs font-medium transition-colors"
-                                onClick={() => console.log("View test cases for", item._id)}
-                              >
-                                See More
-                                <ChevronRight className="w-3 h-3 transition-transform group-hover/btn:translate-x-0.5" />
-                              </button>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
+                              </td>
+                              <td className="px-6 py-4 text-gray-400 font-mono text-xs">
+                                <div className="flex items-center gap-1">
+                                  <span className={statusInfo.text === "Passed" ? "text-green-400" : "text-gray-200"}>
+                                    {item.passedNo}
+                                  </span>
+                                  <span className="opacity-40">/</span>
+                                  <span>{item.totalTestCases}</span>
+                                </div>
+                              </td>
+                              <td className="px-6 py-4 text-gray-500 text-xs whitespace-nowrap">
+                                {formattedDate}
+                              </td>
+                              <td className="px-6 py-4 text-right">
+                                <button
+                                  className="group/btn flex items-center gap-1 ml-auto text-blue-400 hover:text-blue-300 text-xs font-medium transition-colors"
+                                  onClick={() => handelThegetusrCode(item._id, item.language, item.problemId)}
+                                >
+                                  See More
+                                  <ChevronRight className="w-3 h-3 transition-transform group-hover/btn:translate-x-0.5" />
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
-              </div>
+
+                {/* Mobile cards */}
+                <div className="space-y-3 lg:hidden">
+                  {SubmissonData.map((item, index) => {
+                    const statusInfo = getStatusInfo(item);
+                    const formattedDate = new Date(item.createdAt).toLocaleDateString("en-US", {
+                      year: "numeric",
+                      month: "short",
+                      day: "numeric",
+                      hour: "2-digit",
+                      minute: "2-digit"
+                    });
+
+                    return (
+                      <div key={item._id || index} className="p-4 rounded-xl border border-gray-800 bg-gray-900 shadow-sm flex flex-col gap-3">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            {statusInfo.icon}
+                            <span className={`font-semibold ${statusInfo.textClass}`}>{statusInfo.text}</span>
+                          </div>
+                          <span className="text-xs text-gray-500">{formattedDate}</span>
+                        </div>
+                        <div className="flex items-center justify-between text-xs text-gray-300">
+                          <span className="px-2 py-1 rounded bg-gray-800 border border-gray-700 font-mono">{item.language}</span>
+                          <span className="font-mono">
+                            <span className={statusInfo.text === "Passed" ? "text-green-400" : "text-gray-200"}>{item.passedNo}</span>
+                            <span className="opacity-50">/</span>
+                            {item.totalTestCases}
+                          </span>
+                        </div>
+                        <button
+                          className="w-full inline-flex items-center justify-center gap-1 text-xs font-medium text-blue-400 hover:text-blue-300 border border-blue-500/30 rounded-lg py-2"
+                          onClick={() => handelThegetusrCode(item._id, item.language, item.problemId)}
+                        >
+                          See More
+                          <ChevronRight className="w-3 h-3" />
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
             )}
           </div>
         )}
@@ -434,7 +485,7 @@ function ProblemPanel({ problem, onProblemChange, currentProblemId, SubmissonDat
 }
 
 // Console Panel Component - UPDATED to show status and execution time
-function ConsolePanel({ output, isRunning, executionData }) {
+function ConsolePanel({ output, isRunning, executionData, handelThegetusrCode }) {
   return (
     <div className="h-32 lg:h-64 bg-gray-900 border-t border-gray-700 flex flex-col">
       <div className="px-3 lg:px-4 py-2 border-b border-gray-700 flex items-center gap-2">
@@ -507,8 +558,10 @@ function EditorPanel({
   setLanguage,
   onRun,
   onSubmit,
+  onSave,
   onReset,
   isRunning,
+  isSaving,
   testResults,
   showTestResults,
   setShowTestResults
@@ -570,10 +623,15 @@ function EditorPanel({
         />
       </div>
 
-      {/* Action buttons - BETTER mobile layout */}
       <div className="p-3 lg:p-4 bg-gray-800 border-t border-gray-700">
-        <div className="flex gap-2">
-          {/* Run and Submit buttons - full width on mobile */}
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={onSave}
+            disabled={isSaving || isRunning}
+            className="flex-1 lg:flex-none flex items-center justify-center gap-2 px-4 lg:px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium min-h-[44px]"
+          >
+            {isSaving ? 'Saving…' : 'Save'}
+          </button>
           <button
             onClick={onRun}
             disabled={isRunning}
@@ -592,7 +650,6 @@ function EditorPanel({
             Submit
           </button>
 
-          {/* Test Results button - only show on desktop when results exist */}
           {testResults.length > 0 && (
             <button
               onClick={() => setShowTestResults(!showTestResults)}
@@ -621,6 +678,8 @@ export default function LeetCode() {
   const [showPopup, setShowPopup] = useState(false);
   const [currentJobId, setCurrentJobId] = useState(null);
   const [executionData, setExecutionData] = useState(null); // NEW: Store execution metadata
+  const [isSaving, setIsSaving] = useState(false);
+
 
   const { socket, initSocket, isConnected, clientId } = useSocketStore();
 
@@ -650,32 +709,137 @@ export default function LeetCode() {
     enabled: !!currentProblemId,
   })
 
-  // Initialize code when problem or language changes
-  useEffect(() => {
-    if (!currentProblem) return;
+  const {
+    mutate: fetchUserCode,
+    data: userCodeData,
+    isLoading: isUserCodeLoading,
+    isError,
+    error,
+  } = useMutation({
+    mutationFn: getUserCode,
+    onSuccess: (data, variables) => {
+      // preserve latest fetched code so the language/template effect does not overwrite it
+      const nextLanguage = data.language || variables?.language || language;
+      const fromProblem = variables?.problemId || currentProblemId;
+      setFetchedUserCode({
+        code: data.code,
+        language: nextLanguage,
+        problemId: fromProblem
+      });
 
-    // reset editor state
+      setLanguage(nextLanguage);
+      setCode(data.code || "");
+      if (fromProblem && nextLanguage) {
+        const key = getLocalKey(fromProblem, nextLanguage);
+        localStorage.setItem(key, JSON.stringify(data.code || ""));
+      }
+    }
+  });
+
+  const saveDraftMutation = useMutation({
+    mutationFn: ({ problemId, language, code }) =>
+      axios.post("http://localhost:8000/code/saveDraft", { problemId, language, code }, { withCredentials: true }),
+    onMutate: () => setIsSaving(true),
+    onSuccess: () => {
+      toast.success("Saved to DB");
+    },
+    onError: () => {
+      toast.error("Save failed");
+    },
+    onSettled: () => {
+      setIsSaving(false);
+      saveInFlightRef.current = false;
+    }
+  });
+
+  const handelThegetusrCode = async (submis_id, language, problemId) => {
+    fetchUserCode({ testCaseId: submis_id, problemId, language })
+  }
+
+  const getLocalKey = (problemId, lang) => `code_${problemId}_${lang}`;
+
+  const [fetchedUserCode, setFetchedUserCode] = useState(null);
+  const lastLocalToastRef = useRef(0);
+  const lastSaveRef = useRef(0);
+  const saveInFlightRef = useRef(false);
+
+  const saveCode2LocalStorage = (problemId, codeText = "", lang = "") => {
+    if (!problemId || !lang) return;
+    const key = getLocalKey(problemId, lang);
+    localStorage.setItem(key, JSON.stringify(codeText));
+
+    // Throttle local toast to avoid spam
+    const now = Date.now();
+    if (now - lastLocalToastRef.current > 4000) {
+      toast.success("Saved locally");
+      lastLocalToastRef.current = now;
+    }
+  };
+
+  const loadCodeFromLocalStorage = (problemId, lang) => {
+    if (!problemId || !lang) return null;
+    const key = getLocalKey(problemId, lang);
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : null;
+  };
+
+  // Initialize / hydrate editor when problem or language changes
+  useEffect(() => {
+    if (!currentProblem || !currentProblemId) return;
+
+    const localSaved = loadCodeFromLocalStorage(currentProblemId, language);
+    const fetchedMatch = fetchedUserCode &&
+      fetchedUserCode.problemId === currentProblemId &&
+      fetchedUserCode.language === language
+      ? fetchedUserCode.code
+      : null;
+
     const template = currentProblem.languageTemplates?.[language] || "";
-    setCode(template);
+    const nextCode = fetchedMatch ?? localSaved ?? template;
+
+    setCode(nextCode);
     setConsoleOutput([]);
     setTestResults([]);
     setShowTestResults(false);
     setShowPopup(false);
     setExecutionData(null);
 
+    if (fetchedMatch) {
+      toast.success("Loaded from your last submission");
+    } else if (localSaved) {
+      toast.success("Loaded from local save");
+    }
+  }, [currentProblem, currentProblemId, language, fetchedUserCode]);
+
+
+  const guardedSave = (problemId, codeVal, langVal) => {
+    if (!problemId || !langVal) return;
+
+    const now = Date.now();
+    const COOLDOWN = 4000; // ms
+    if (saveInFlightRef.current) return;
+    if (now - lastSaveRef.current < COOLDOWN) return;
+
+    lastSaveRef.current = now;
+    saveInFlightRef.current = true;
+
+    saveCode2LocalStorage(problemId, codeVal, langVal);
+    saveDraftMutation.mutate({ problemId, code: codeVal, language: langVal });
+  };
+
+  // Hotkey save (Ctrl/Cmd + S) to DB draft (guarded)
+  useEffect(() => {
     const handleKeyDown = (e) => {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") {
         e.preventDefault();
-        console.log("save button clicked btw");
+        if (!currentProblemId || isSaving) return;
+        guardedSave(currentProblemId, code, language);
       }
     };
 
     window.addEventListener("keydown", handleKeyDown);
-
-    return () => {
-      window.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [currentProblem, language]);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [code, language, currentProblemId, isSaving]);
 
 
   // Set initial problem
@@ -686,87 +850,7 @@ export default function LeetCode() {
   }, [problems]);
 
   // Socket event handlers
-  // Socket event handlers - ADD BLOCKED RESULT HANDLER
-  useEffect(() => {
-    if (!socket) return;
-
-    const handleAlltestCases = (data) => {
-      console.log("test result executed", data);
-
-      // Check if this is a new job - if so, reset results
-      if (currentJobId !== data.jobId) {
-        setCurrentJobId(data.jobId);
-        setTestResults([data]);
-        setAllTestsCompleted(false);
-      } else {
-        // Same job - update/add result (keep max 4)
-        setTestResults(prev => {
-          const filtered = prev.filter(r => r.testCaseNumber !== data.testCaseNumber);
-          const updated = [...filtered, data].sort((a, b) => a.testCaseNumber - b.testCaseNumber);
-          return updated.slice(0, 4); // Keep max 4 results
-        });
-      }
-
-      // Check if all test cases are completed
-      if (data.testCaseNumber === data.totalTestCases) {
-        setAllTestsCompleted(true);
-        setIsRunning(false);
-      }
-
-      // Show popup for all screens, panel only for desktop
-      setShowPopup(true);
-      if (window.innerWidth >= 1024) {
-        setShowTestResults(true);
-      }
-    };
-
-    const handleRunResult = (data) => {
-      console.log("actually runs code res", data);
-
-      // Store execution metadata and output
-      setExecutionData({
-        status: data.status,
-        duration_sec: data.duration_sec || data.Duration,
-        jobId: data.jobId
-      });
-
-      setConsoleOutput(prev => [...prev, data.output || data.actualOutput]);
-      setIsRunning(false);
-    };
-
-    // NEW: Handle blocked execution results
-    const handleBlockedResult = (data) => {
-      console.log("Blocked execution:", data);
-
-      // Set execution data to show blocked status
-      setExecutionData({
-        status: data.status, // "unsafe"
-        reason: data.reason, // Security reason
-        jobId: data.jobId || data.id,
-        duration_sec: 0 // No execution time for blocked code
-      });
-
-      // Show the security block reason in console
-      setConsoleOutput(prev => [
-        ...prev,
-        ` Code execution blocked: ${data.reason}`
-      ]);
-
-      setIsRunning(false);
-    };
-
-    socket.on("print_test_result", handleRunResult);
-    socket.on("all_test_result", handleAlltestCases);
-    socket.on("actual_run_result", handleRunResult);
-    socket.on("blocked_result", handleBlockedResult); // NEW: Listen for blocked results
-
-    return () => {
-      socket.off("print_test_result", handleRunResult);
-      socket.off("all_test_result", handleAlltestCases);
-      socket.off("actual_run_result", handleRunResult);
-      socket.off("blocked_result", handleBlockedResult); // NEW: Cleanup
-    };
-  }, [socket, currentJobId]);
+  useEffect;
 
   const handleProblemChange = (newProblemId) => {
     setCurrentProblemId(newProblemId);
@@ -775,7 +859,7 @@ export default function LeetCode() {
   const handleReset = () => {
     if (currentProblem) {
       const template = currentProblem.languageTemplates?.[language] || "";
-      setCode(template);
+      setCode((prev) => template);
       setConsoleOutput([]);
       setTestResults([]);
       setShowTestResults(false);
@@ -852,6 +936,7 @@ export default function LeetCode() {
             onProblemChange={handleProblemChange}
             currentProblemId={currentProblemId || (problems[0]?._id)}
             SubmissonData={SubmissonData}
+            handelThegetusrCode={handelThegetusrCode}
           />
         </div>
 
@@ -865,8 +950,13 @@ export default function LeetCode() {
               setLanguage={setLanguage}
               onRun={runCode}
               onSubmit={submitCode}
+              onSave={() => {
+                if (!currentProblemId || isSaving) return;
+                guardedSave(currentProblemId, code, language);
+              }}
               onReset={handleReset}
               isRunning={isRunning}
+              isSaving={isSaving}
               testResults={testResults}
               showTestResults={showTestResults}
               setShowTestResults={setShowTestResults}

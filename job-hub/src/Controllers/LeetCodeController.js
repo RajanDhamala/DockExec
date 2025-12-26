@@ -6,6 +6,7 @@ import { producer } from "../Utils/KafkaProvider.js";
 import { v4 as uuidv4 } from 'uuid';
 import { RedisClient } from "../Utils/RedisClient.js"
 import TestCase from "../Schemas/TestCaseSchema.js";
+import UserCodeDraft from "../Schemas/UserCodeDraft.js";
 
 const getList = asyncHandler(async (req, res) => {
   const listKey = "getList";
@@ -164,7 +165,6 @@ const AllTestCases = asyncHandler(async (req, res) => {
 });
 
 
-
 const GetSubmissons = asyncHandler(async (req, res) => {
   const { problemId } = req.params;
   const userId = req.user.id;
@@ -172,7 +172,6 @@ const GetSubmissons = asyncHandler(async (req, res) => {
   if (!problemId) {
     throw new ApiError(400, 'please provide problemId in request params');
   }
-
   const submissionsKey = `submissions:${userId}:${problemId}`;
 
   try {
@@ -193,7 +192,36 @@ const GetSubmissons = asyncHandler(async (req, res) => {
   return res.send(new ApiResponse(200, 'fetched submissions data', submissions));
 })
 
+const GetTestCode = asyncHandler(async (req, res) => {
+  const { testCaseId, problemId } = req.params;
+  console.log(req.params)
+  if (!testCaseId || !problemId) {
+    throw new ApiError(400, 'please provide testCaseId and problemId in request params');
+  }
+  const data = await TestCase.findOne({ _id: testCaseId, problemId }).select("code language");
+
+  return res.send(new ApiResponse(200, 'fetched test case code', data));
+
+});
+
+// Save or update user's draft code for a problem/language
+const SaveDraftCode = asyncHandler(async (req, res) => {
+  const { problemId, language, code } = req.body;
+  const userId = req.user.id;
+
+  if (!problemId || !language) {
+    throw new ApiError(400, 'please provide problemId and language in request body');
+  }
+
+  const draft = await UserCodeDraft.findOneAndUpdate(
+    { userId, problemId, language },
+    { code: code || "" },
+    { upsert: true, new: true, setDefaultsOnInsert: true }
+  );
+
+  return res.send(new ApiResponse(200, 'saved code draft', { id: draft._id }));
+});
 
 export {
-  TestPrintCode, getList, GetData, GetSubmissons, AllTestCases
+  TestPrintCode, getList, GetData, GetSubmissons, AllTestCases, GetTestCode, SaveDraftCode
 }
