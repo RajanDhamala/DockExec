@@ -1,195 +1,14 @@
-"use client"
-
-import { use, useState } from "react"
-import { Link } from "react-router-dom"
+import { useState } from "react"
 import {
-  Menu,
-  X,
-  ArrowRight,
-  Code2,
-  Zap,
-  Trophy,
-  Lock,
-  GitBranch,
-  Activity,
-  Play,
-  RotateCcw,
-  CheckCircle2,
-  Github,
-  Twitter,
+   Code2, Zap, Trophy, Lock, GitBranch, Activity, Play, RotateCcw, CheckCircle2,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 import { useNavigate } from "react-router-dom"
-// Navbar Component
-function Navbar() {
-  const [isOpen, setIsOpen] = useState(false)
-  const navigate=useNavigate();
-
-  return (
-    <nav className="sticky top-0 z-50 w-full border-b border-slate-700 bg-gray-900/95 backdrop-blur supports-[backdrop-filter]:bg-gray-900/60">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-16">
-          {/* Logo */}
-          <Link to={"/"} className="flex items-center gap-2 font-bold text-xl">
-            <div className="w-8 h-8 bg-blue-500 rounded flex items-center justify-center text-white font-mono">
-              {"{"}
-            </div>
-            <span className="text-white">DockExec</span>
-          </Link>
-
-          {/* Desktop Menu */}
-          <div className="hidden md:flex items-center gap-8">
-            <Link to={"/leet"} className="text-sm text-slate-400 hover:text-white transition">
-              Problems
-            </Link>
-            <Link to={"/leaderboard"} className="text-sm text-slate-400 hover:text-white transition">
-              Leaderboard
-            </Link>
-            <Link to={"#faq"} className="text-sm text-slate-400 hover:text-white transition">
-              FAQ
-            </Link>
-          </div>
-
-          {/* Desktop CTA Buttons */}
-          <div className="hidden md:flex items-center gap-3">
-            <Button variant="ghost" size="sm" className="text-slate-400 hover:text-black" onClick={()=>navigate('auth/login')}>
-              Sign In
-            </Button>
-            <Button size="sm" className="bg-blue-500 hover:bg-blue-600 text-white" onClick={()=>navigate('auth/register')}>
-              Sign Up
-            </Button>
-          </div>
-
-          {/* Mobile Menu Button */}
-          <button className="md:hidden text-white" onClick={() => setIsOpen(!isOpen)}>
-            {isOpen ? <X size={24} /> : <Menu size={24} />}
-          </button>
-        </div>
-
-        {/* Mobile Menu */}
-        {isOpen && (
-          <div className="md:hidden pb-4 border-t border-slate-700">
-            <Link to="/leet" className="block py-2 text-sm text-slate-400 hover:text-white">
-              Problems
-            </Link>
-            <Link to="/leaderboard" className="block py-2 text-sm text-slate-400 hover:text-white">
-              Leaderboard
-            </Link>
-           <a href="#faq" className="text-sm text-slate-400 hover:text-white transition">
-          FAQ
-          </a>
-
-            <div className="flex gap-2 mt-4">
-              <Button variant="ghost" size="sm" className="flex-1 text-slate-400 hover:text-white" onClick={()=>navigate('auth/login')}>
-                Sign In
-              </Button>
-              <Button size="sm" className="flex-1 bg-blue-500 hover:bg-blue-600 text-white" onClick={()=>navigate('auth/register')}>
-                Sign Up
-              </Button>
-            </div>
-          </div>
-        )}
-      </div>
-    </nav>
-  )
-}
-
-// Hero Section Component
-function HeroSection() {
-  return (
-    <section className="w-full py-20 md:py-32 bg-gray-900">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="grid md:grid-cols-2 gap-12 items-center">
-          <div className="space-y-6">
-            <div className="space-y-2">
-              <p className="text-sm text-blue-400 font-medium">Sandbox Execution Environment</p>
-              <h1 className="text-4xl md:text-6xl font-bold text-white leading-tight">Code. Execute. Learn.</h1>
-              <p className="text-lg text-slate-300">
-                Practice coding in a safe, isolated sandbox. Real-time execution across 5 languages with instant
-                feedback. Zero setup required.
-              </p>
-            </div>
-
-            <div className="flex flex-col sm:flex-row gap-4 pt-6">
-              <Link to="/leet">
-                <Button size="lg" className="w-full sm:w-auto bg-blue-500 hover:bg-blue-600 text-white gap-2">
-                  Explore Problems
-                  <ArrowRight size={18} />
-                </Button>
-              </Link>
-              <Link to="/code">
-                <Button
-                  size="lg"
-                  variant="outline"
-                  className="w-full sm:w-auto gap-2 bg-transparent border-slate-600 text-white hover:bg-slate-800 hover:text-white"
-                >
-                  <Code2 size={18} />
-                  Start Coding
-                </Button>
-              </Link>
-            </div>
-
-            <div className="flex flex-wrap gap-6 pt-8 text-sm text-slate-400">
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 bg-blue-500 rounded-full" />
-                <span>15+ Problems</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 bg-blue-500 rounded-full" />
-                <span>5 Languages</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 bg-blue-500 rounded-full" />
-                <span>Real-Time Execution</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Hero Visual - Code Editor Preview */}
-          <div className="relative">
-            <div className="bg-slate-800 border border-slate-700 rounded-lg overflow-hidden shadow-2xl">
-              <div className="bg-slate-700/50 border-b border-slate-700 px-4 py-3 flex items-center gap-2">
-                <div className="flex gap-1.5">
-                  <div className="w-2.5 h-2.5 bg-red-500 rounded-full" />
-                  <div className="w-2.5 h-2.5 bg-yellow-500 rounded-full" />
-                  <div className="w-2.5 h-2.5 bg-blue-500 rounded-full" />
-                </div>
-                <span className="text-xs text-slate-400 ml-2">editor.js</span>
-              </div>
-
-              <div className="p-4 bg-gray-900 font-mono text-sm">
-                <pre className="text-slate-300 whitespace-pre-wrap break-words">
-                  {`function twoSum(nums, target) {
-  const map = new Map()
-  for (let i = 0; i < nums.length; i++) {
-    const complement = target - nums[i]
-    if (map.has(complement)) {
-      return [map.get(complement), i]
-    }
-    map.set(nums[i], i)
-  }
-  return []
-}`}
-                </pre>
-              </div>
-
-              <div className="bg-slate-700/30 border-t border-slate-700 px-4 py-3">
-                <p className="text-xs text-blue-400">✓ All test cases passed</p>
-              </div>
-            </div>
-
-            {/* Floating Badge */}
-            <div className="absolute -bottom-4 -right-4 bg-blue-500 text-white px-4 py-2 rounded-lg shadow-lg text-sm font-medium">
-              Free Forever
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-  )
-}
+import Navbar from "../templates/Navbar.jsx"
+import Footer from "../templates/Footer.jsx"
+import HeroSection from "@/templates/Herosection.jsx"
 
 // Features Section Component
 function FeaturesSection() {
@@ -274,13 +93,12 @@ function FeaturesSection() {
                     {feature.levels.map((level) => (
                       <span
                         key={level}
-                        className={`px-2.5 py-1 text-xs rounded ${
-                          level === "Easy"
-                            ? "bg-emerald-500/20 text-emerald-300"
-                            : level === "Medium"
-                              ? "bg-amber-500/20 text-amber-300"
-                              : "bg-red-500/20 text-red-300"
-                        }`}
+                        className={`px-2.5 py-1 text-xs rounded ${level === "Easy"
+                          ? "bg-emerald-500/20 text-emerald-300"
+                          : level === "Medium"
+                            ? "bg-amber-500/20 text-amber-300"
+                            : "bg-red-500/20 text-red-300"
+                          }`}
                       >
                         {level}
                       </span>
@@ -571,87 +389,6 @@ function FAQSection() {
         </Accordion>
       </div>
     </section>
-  )
-}
-
-// Footer Component
-function Footer() {
-  return (
-    <footer className="w-full border-t border-slate-700 bg-slate-800/30 py-12">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="grid md:grid-cols-4 gap-8 mb-8">
-          <div>
-            <Link to="/" className="flex items-center gap-2 font-bold mb-4">
-              <div className="w-6 h-6 bg-blue-500 rounded flex items-center justify-center text-white font-mono text-sm">
-                {"{"}
-              </div>
-              <span className="text-white">DockExec</span>
-            </Link>
-            <p className="text-sm text-slate-400">Free code execution platform. Practice coding safely in the cloud.</p>
-          </div>
-
-          <div>
-            <h4 className="font-bold text-white mb-4 text-sm">Platform</h4>
-            <ul className="space-y-2 text-sm text-slate-400">
-              <li>
-                <Link to={"/leet"} className="hover:text-white transition">
-                  Problems
-                </Link>
-              </li>
-              <li>
-                <Link to={"/leaderboard"} className="hover:text-white transition">
-                  Leaderboard
-                </Link>
-              </li>
-              <li>
-                <Link to={"/code"} className="hover:text-white transition">
-                  Code Editor
-                </Link>
-              </li>
-            </ul>
-          </div>
-
-          <div>
-            <h4 className="font-bold text-white mb-4 text-sm">Resources</h4>
-            <ul className="space-y-2 text-sm text-slate-400">
-              <li>
-                <Link to="#" className="hover:text-white transition">
-                  Documentation
-                </Link>
-              </li>
-              <li>
-                <Link to="#faq" className="hover:text-white transition">
-                  FAQ
-                </Link>
-              </li>
-              <li>
-                <Link to="#" className="hover:text-white transition">
-                  Support
-                </Link>
-              </li>
-            </ul>
-          </div>
-
-          <div>
-            <h4 className="font-bold text-white mb-4 text-sm">Follow</h4>
-            <div className="flex gap-4">
-              <a href="https://github.com/RajanDhamala/DockExec.git" target="#blank" className="text-slate-400 hover:text-white transition" aria-label="GitHub">
-                <Github size={20} />
-              </a>
-              <a href="#" className="text-slate-400 hover:text-white transition" aria-label="Twitter">
-                <Twitter size={20} />
-              </a>
-            </div>
-          </div>
-        </div>
-
-        <div className="border-t border-slate-700 pt-8">
-          <p className="text-xs text-slate-500 text-center">
-            © 2025 DockExec. Free code execution platform. All rights reserved.
-          </p>
-        </div>
-      </div>
-    </footer>
   )
 }
 

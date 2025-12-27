@@ -2,10 +2,6 @@ import asyncHandler from "../Utils/AsyncHandler.js";
 import { CreateAccessToken } from "../Utils/Authutils.js";
 import jwt from "jsonwebtoken";
 
-import dotenv from "dotenv";
-
-dotenv.config();
-
 const Whoareu = asyncHandler(async (req, res) => {
   const { accessToken, refreshToken } = req.cookies;
 
@@ -29,7 +25,7 @@ const Whoareu = asyncHandler(async (req, res) => {
       email: decodedRefresh.email,
     };
 
-    const newAccessToken = CreateAccessToken(user.fullname, user.id, user.email);
+    const newAccessToken = CreateAccessToken(user.id, user.email, user.fullname);
 
     res.cookie("accessToken", newAccessToken, {
       httpOnly: true,

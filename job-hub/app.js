@@ -1,4 +1,5 @@
 import express from "express";
+import { GithubProvider, GoogleProvider } from './src/GithubProvider.js';
 import cookieParser from "cookie-parser";
 import cors from "cors";
 import UserRouter from "./src/Routes/UserRoute.js"
@@ -10,15 +11,16 @@ import { connectRedis, RedisClient } from "./src/Utils/RedisClient.js";
 import { save2Redis, saveTest2db } from "./src/Utils/RedisUtils.js";
 import { LogTrialResult, LogRawExecution, LogTestCaseResult } from "./src/Controllers/ExecutionLogs.js"
 import client from "prom-client";
+import dotenv from "dotenv"
+import { loginOrLinkUser } from "./src/Utils/OuthUtils.js";
 
-
+dotenv.config()
 
 const app = express();
 app.use(cors({
   origin: "http://localhost:5173",
   credentials: true,
 }))
-
 client.collectDefaultMetrics({ register: client.register });
 
 app.get("/metrics", async (req, res) => {
@@ -32,80 +34,111 @@ app.get("/metrics", async (req, res) => {
   }
 });
 app.use(cookieParser());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.urlencoded({ extended: true, limit: "1mb" }));
 app.use(express.json());
 
-(async () => {
-  try {
-    await initkafka();
-    console.log(" Kafka ready, subscribing to topics...");
-    await connectRedis();
-    await consumer.subscribe({ topic: "programiz_result", fromBeginning: true });
-    await consumer.subscribe({ topic: "print_test_result", fromBeginning: true });
-    await consumer.subscribe({ topic: "all_test_result", fromBeginning: true })
-    await consumer.subscribe({ topic: "blocked_exec", fromBeginning: true })
+const onGithubSuccess = async (req, res, data) => {
+  loginOrLinkUser(data, res, "githubProviderId")
+};
+const onGoogleSuccess = async (req, res, data) => {
+  loginOrLinkUser(data, res, "googleProviderId")
+};
+const onError = async (req, res, error) => {
+  console.error("OAuth failed:", error);
+  return res.redirect(`${process.env.FRONTEND_URI}auth/error`);
+};
 
-    await consumer.run({
-      eachMessage: async ({ topic, message }) => {
-        const value = message.value.toString();
 
-        let data = {};
-        try {
-          data = JSON.parse(value);
-        } catch {
-          data = { raw: value };
-        }
-        switch (topic) {
+GithubProvider(
+  app,
+  process.env.GITHUB_CLIENT_ID,
+  process.env.GITHUB_CLIENT_SECRET,
+  process.env.GITHUB_REDIRECT_URI,
+  onGithubSuccess,
+  onError
+);
 
-          case "all_test_result":
-            // this gets data of all the test cases with print=false
-            console.log(" Job result received:", data);
-            if (data?.testCaseId) {
-              await emitAllCaseResult(data);
-              await save2Redis(data)
-              if (data.testCaseNumber !== data.totalTestCases) {
-                console.log(" this is final test case no")
-              } else {
-                const key = `job:${data.jobId}`;
-                const all = await RedisClient.hGetAll(key);
-                console.log("all data:", all)
-                await saveTest2db(all)
-                await LogTestCaseResult(all)
-              }
-            }
-            break;
+GoogleProvider(
+  app,
+  process.env.GOOGLE_CLIENT_ID,
+  process.env.GOOGLE_CLIENT_SECRET,
+  process.env.GOOGLE_REDIRECT_URI,
+  onGoogleSuccess,
+  onError
+);
+await connectRedis();
 
-          case "blocked_exec":
-            console.log(" Blocked execution:", data);
-            await emitBlockedresult(data);
-            break;
-
-          case "print_test_result":
-            // this gets the result from single test case with print=true
-            console.log("we got data ok buddy", data)
-            console.log("No test cases, single job result");
-            await emitSingleTestresult(data);
-            await LogTrialResult(data)
-
-          case "programiz_result":
-            // this gets the result form the programmiz style execution
-            console.log("programmiz code result:", data);
-            await emitProgrammizResult(data);
-            await LogRawExecution(data)
-            break;
-
-          default:
-            console.warn(" Unknown topic received:", topic, data);
-            break;
-        }
-      },
-    });
-
-  } catch (err) {
-    console.error(" Kafka initialization failed:", err);
-  }
-})();
-
+// (async () => {
+//   try {
+//     await initkafka();
+//     console.log(" Kafka ready, subscribing to topics...");
+//     await connectRedis();
+//     await consumer.subscribe({ topic: "programiz_result", fromBeginning: true });
+//     await consumer.subscribe({ topic: "print_test_result", fromBeginning: true });
+//     await consumer.subscribe({ topic: "all_test_result", fromBeginning: true })
+//     await consumer.subscribe({ topic: "blocked_exec", fromBeginning: true })
+//
+//     await consumer.run({
+//       eachMessage: async ({ topic, message }) => {
+//         const value = message.value.toString();
+//
+//         let data = {};
+//         try {
+//           data = JSON.parse(value);
+//         } catch {
+//           data = { raw: value };
+//         }
+//         switch (topic) {
+//
+//           case "all_test_result":
+//             // this gets data of all the test cases with print=false
+//             console.log(" Job result received:", data);
+//             if (data?.testCaseId) {
+//               await emitAllCaseResult(data);
+//               await save2Redis(data)
+//               if (data.testCaseNumber !== data.totalTestCases) {
+//                 console.log(" this is final test case no")
+//               } else {
+//                 const key = `job:${data.jobId}`;
+//                 const all = await RedisClient.hGetAll(key);
+//                 console.log("all data:", all)
+//                 await saveTest2db(all)
+//                 await LogTestCaseResult(all)
+//               }
+//             }
+//             break;
+//
+//           case "blocked_exec":
+//             console.log(" Blocked execution:", data);
+//             await emitBlockedresult(data);
+//             break;
+//
+//           case "print_test_result":
+//             // this gets the result from single test case with print=true
+//             console.log("we got data ok buddy", data)
+//             console.log("No test cases, single job result");
+//             await emitSingleTestresult(data);
+//             await LogTrialResult(data)
+//
+//           case "programiz_result":
+//             // this gets the result form the programmiz style execution
+//             console.log("programmiz code result:", data);
+//             await emitProgrammizResult(data);
+//             await LogRawExecution(data)
+//             break;
+//
+//           default:
+//             console.warn(" Unknown topic received:", topic, data);
+//             break;
+//         }
+//       },
+//     });
+//
+//   } catch (err) {
+//     console.error(" Kafka initialization failed:", err);
+//   }
+// })();
+//
 app.get("/", (req, res) => {
   res.send("Server is up and running");
 });

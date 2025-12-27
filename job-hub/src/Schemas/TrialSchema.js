@@ -4,20 +4,19 @@ const RunCodeSchema = new mongoose.Schema(
   {
     _id: {
       type: String,
-      unique: true,
     },
 
     problemid: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Problem",
       required: true,
-      index:true
+      index: true
     },
 
     userId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
-      index:true
+      index: true
     },
 
     language: {
@@ -43,7 +42,7 @@ const RunCodeSchema = new mongoose.Schema(
     },
 
     execution_time: {
-      type: Number, 
+      type: Number,
     },
   },
   { timestamps: true }
