@@ -840,6 +840,87 @@ export default function LeetCode() {
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [code, language, currentProblemId, isSaving]);
+  // Socket event handlers - ADD BLOCKED RESULT HANDLER
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleAlltestCases = (data) => {
+      console.log("test result executed", data);
+
+      // Check if this is a new job - if so, reset results
+      if (currentJobId !== data.jobId) {
+        setCurrentJobId(data.jobId);
+        setTestResults([data]);
+        setAllTestsCompleted(false);
+      } else {
+        // Same job - update/add result (keep max 4)
+        setTestResults(prev => {
+          const filtered = prev.filter(r => r.testCaseNumber !== data.testCaseNumber);
+          const updated = [...filtered, data].sort((a, b) => a.testCaseNumber - b.testCaseNumber);
+          return updated.slice(0, 4); // Keep max 4 results
+        });
+      }
+
+      // Check if all test cases are completed
+      if (data.testCaseNumber === data.totalTestCases) {
+        setAllTestsCompleted(true);
+        setIsRunning(false);
+      }
+
+      // Show popup for all screens, panel only for desktop
+      setShowPopup(true);
+      if (window.innerWidth >= 1024) {
+        setShowTestResults(true);
+      }
+    };
+
+    const handleRunResult = (data) => {
+      console.log("actually runs code res", data);
+
+      // Store execution metadata and output
+      setExecutionData({
+        status: data.status,
+        duration_sec: data.duration_sec || data.Duration,
+        jobId: data.jobId
+      });
+
+      setConsoleOutput(prev => [...prev, data.output || data.actualOutput]);
+      setIsRunning(false);
+    };
+
+    // NEW: Handle blocked execution results
+    const handleBlockedResult = (data) => {
+      console.log("Blocked execution:", data);
+
+      // Set execution data to show blocked status
+      setExecutionData({
+        status: data.status, // "unsafe"
+        reason: data.reason, // Security reason
+        jobId: data.jobId || data.id,
+        duration_sec: 0 // No execution time for blocked code
+      });
+
+      // Show the security block reason in console
+      setConsoleOutput(prev => [
+        ...prev,
+        ` Code execution blocked: ${data.reason}`
+      ]);
+
+      setIsRunning(false);
+    };
+
+    socket.on("print_test_result", handleRunResult);
+    socket.on("all_test_result", handleAlltestCases);
+    socket.on("actual_run_result", handleRunResult);
+    socket.on("blocked_result", handleBlockedResult); // NEW: Listen for blocked results
+
+    return () => {
+      socket.off("print_test_result", handleRunResult);
+      socket.off("all_test_result", handleAlltestCases);
+      socket.off("actual_run_result", handleRunResult);
+      socket.off("blocked_result", handleBlockedResult); // NEW: Cleanup
+    };
+  }, [socket, currentJobId]);
 
 
   // Set initial problem

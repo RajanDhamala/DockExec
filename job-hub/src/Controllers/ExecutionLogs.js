@@ -1,9 +1,10 @@
 import TrialRunner from "../Schemas/TrialSchema.js"
-import TestCase from "../Schemas/TestCaseSchema.js"; 
+import TestCase from "../Schemas/TestCaseSchema.js";
 import RawExecution from "../Schemas/RawSchema.js"
 import mongoose from "mongoose"
+import { RedisClient } from "../Utils/RedisClient.js";
 
-mongoose.set("debug", true);
+// mongoose.set("debug", true);
 const LogTrialResult = async (data) => {
   try {
     return await TrialRunner.create({
@@ -13,9 +14,8 @@ const LogTrialResult = async (data) => {
       language: data.language,
       generatedCode: data.code,
       status: data.status,
-      output: data.output,
-      execution_time: data.duration_sec,
-      socketId: data.socketId
+      output: data.actualOutput,
+      execution_time: data.duration,
     })
   } catch (err) {
     console.error("Trial log DB insert failed:", err)
@@ -43,7 +43,8 @@ const LogTestCaseResult = async (data) => {
   console.log("Parsed test cases:", testCases);
 
   const ref = testCases[0];
-
+  const submissionsKey = `submissions:${ref.userId}:${ref.problemId}`;
+  await RedisClient.del(submissionsKey);
   const formattedTestCases = testCases.map((tc) => ({
     caseId: tc.testCaseId,
     testCaseNumber: tc.testCaseNumber,
@@ -55,8 +56,8 @@ const LogTestCaseResult = async (data) => {
     executedAt: new Date(tc.timestamp),
   }));
 
-const passedNo = formattedTestCases.filter(tc => tc.isPassed).length;
-console.log("code:",ref.orginalCode)
+  const passedNo = formattedTestCases.filter(tc => tc.isPassed).length;
+  console.log("code:", ref.orginalCode)
 
   try {
     await TestCase.create({
@@ -67,8 +68,8 @@ console.log("code:",ref.orginalCode)
       totalTestCases: total,
       status: "executed",
       testCases: formattedTestCases,
-      passedNo:passedNo,
-      code:ref.orginalCode
+      passedNo: passedNo,
+      code: ref.orginalCode
     });
 
     console.log("Created submission:", ref.jobId);
@@ -78,8 +79,8 @@ console.log("code:",ref.orginalCode)
 };
 
 
-
 const LogRawExecution = async (data) => {
+  console.log("language :",data.language)
   try {
     return await RawExecution.create({
       _id: data.jobId,
@@ -97,7 +98,7 @@ const LogRawExecution = async (data) => {
 }
 
 export {
-    LogRawExecution,
-    LogTrialResult,
-    LogTestCaseResult
+  LogRawExecution,
+  LogTrialResult,
+  LogTestCaseResult
 }

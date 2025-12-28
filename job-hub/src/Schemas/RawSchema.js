@@ -6,7 +6,7 @@ const RawSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: "User",
         index: true
-    }, langugae: {
+    }, language: {
         type: String
     }, code: {
         type: String

@@ -30,6 +30,10 @@ const UserSchema = new mongoose.Schema({
     unique: true
   }, avatar: {
     type: String
+  }, dob: {
+    type: Date
+  }, bio: {
+    type: String
   },
   solvedTestCases: [
     {
