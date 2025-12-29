@@ -106,7 +106,7 @@ export default function SettingsPage() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div className="space-y-2">
                         <Label htmlFor="firstName">Full Name</Label>
-                        <Input id="firstName" value={profileData.fullname} />
+                        <Input id="firstName" value={profileData?.fullname} />
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="dob">Date of Birth</Label>
@@ -116,7 +116,7 @@ export default function SettingsPage() {
 
                     <div className="space-y-2">
                       <Label htmlFor="email">Email Address</Label>
-                      <Input id="email" type="email" value={profileData.email} />
+                      <Input id="email" type="email" value={profileData?.email} />
                     </div>
 
 

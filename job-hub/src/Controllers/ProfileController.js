@@ -47,7 +47,7 @@ const ChangePassword = asyncHandler(async (req, res) => {
 
 
 const RecentExecutions = asyncHandler(async (req, res) => {
-  const user = req.user
+  const user = req.user;
 
   const recentExe = await TestCase.aggregate([
     {
@@ -57,6 +57,23 @@ const RecentExecutions = asyncHandler(async (req, res) => {
     },
     { $sort: { createdAt: -1 } },
     { $limit: 8 },
+
+    {
+      $lookup: {
+        from: "problems",            // collection name
+        localField: "problemId",
+        foreignField: "_id",
+        as: "problem"
+      }
+    },
+
+    {
+      $unwind: {
+        path: "$problem",
+        preserveNullAndEmptyArrays: true
+      }
+    },
+
     {
       $project: {
         createdAt: 1,
@@ -67,14 +84,57 @@ const RecentExecutions = asyncHandler(async (req, res) => {
         firstTestCaseDuration: {
           $arrayElemAt: ["$testCases.duration", 0]
         },
-        problemId: 1
+
+        problemId: 1,
+        name: "$problem.title", // or name
       }
     }
   ]);
-  if (!recentExe) {
-    throw new ApiError(400, null, 'no recent executions found')
+
+  if (!recentExe || recentExe.length === 0) {
+    throw new ApiError(400, null, "no recent executions found");
   }
-  return res.send(new ApiResponse(200, 'fetched recent executions', recentExe))
+
+  return res.send(
+    new ApiResponse(200, "fetched recent executions", recentExe)
+  );
+});
+
+const ViewRecentExecutionsDetail = asyncHandler(async (req, res) => {
+  const user = req.user
+  const { exeId } = req.params
+
+  if (!exeId) {
+    throw new ApiError(400, null, "plese add execution id in req")
+  }
+  const Viewdata = await TestCase.find({ userId: user.id, _id: exeId })
+  if (!Viewdata) {
+    throw new ApiError(400, null, "not found")
+  }
+  return res.send(new ApiResponse(200, "successfully fetched recent executionDetials", Viewdata))
+})
+
+const reRunRecentExecutions = asyncHandler(async (req, res) => {
+  const user = req.user
+  const { runId } = req.params
+
+  if (!runId) {
+    throw new ApiError(400, null, "please include id of execution")
+  }
+  const getExecutionData = await TestCase.find({ _id: runId, userId: user.id })
+  if (!getExecutionData) throw new ApiError(400, null, "exection metadata not found")
+  return res.send(new ApiResponse(200, "successfully executed oldSubmission", getExecutionData))
+})
+
+const LogRecentExecutionsDetail = asyncHandler(async (req, res) => {
+  const user = req.user
+  const { exeId } = req.params
+  if (!exeId) throw new ApiError(400, null, "please include execution Id in request")
+  const data = await TestCase.find({ _id: exeId, userId: user.id })
+
+  if (!data) throw new ApiError(400, null, "exection metadata not found")
+
+  return res.send(new ApiResponse(200, "successfully executed oldSubmission", data))
 })
 
 
@@ -141,6 +201,25 @@ const AvgTestCaseStats = asyncHandler(async (req, res) => {
   return res.send(new ApiResponse(200, 'success', result));
 })
 
+const viewAvgTestLogs = asyncHandler(async (req, res) => {
+  const user = req.user
+  const { problemId } = req.params
+  console.log("params:", req.params)
+  if (!problemId) throw new ApiError(400, null, "please icnlude problem id in re")
+  const data = await TestCase.find({ userId: user.id, problemId: problemId }).select("createdAt language totalTestCases status passedNo code")
+    .sort({ createdAt: -1 })//latest
+    .limit(6)
+    .populate({
+      path: "problemId",
+      select: "title _id"
+    })
+  if (!data) {
+    throw new ApiError(400, null, "no problem logs found")
+  }
+  console.log("data:", data)
+  return res.send(new ApiResponse(400, "fetched logs successfully", data))
+})
+
 const DeleteAvgTestStats = asyncHandler(async (req, res) => {
   const user = req.user;
   const { problemId } = req.params;
@@ -149,11 +228,12 @@ const DeleteAvgTestStats = asyncHandler(async (req, res) => {
     throw new ApiError(400, null, "please add problemId in request params");
   }
 
-  const result = await TestCase.deleteMany({
-    userId: user.id,
-    problemId: problemId
-  });
+  // const result = await TestCase.deleteMany({
+  //   userId: user.id,
+  //   problemId: problemId
+  // });
 
+  const result = "hello"
   return res.send(
     new ApiResponse(
       200,
@@ -185,6 +265,63 @@ const RecentPrintRuns = asyncHandler(async (req, res) => {
   );
 });
 
+const viewRecentPrintsOutput = asyncHandler(async (req, res) => {
+  const user = req.user;
+  const { problemId } = req.params;
+
+  if (!problemId) {
+    throw new ApiError(400, null, "please include problem id in req");
+  }
+
+  const data = await TrialRunner.find({
+    userId: user.id,
+    _id: problemId,
+  })
+    .select("language status generatedCode createdAt output execution_time problemid")
+    .populate({
+      path: "problemid",
+      select: "_id title",
+    })
+    .sort({ createdAt: -1 }) // latest first
+    .limit(10)
+    .lean();
+
+  if (data.length === 0) {
+    throw new ApiError(404, null, "no problem logs found");
+  }
+
+  return res.send(
+    new ApiResponse(200, "fetched logs successfully", data)
+  );
+});
+
+const reRunRecentPrints = asyncHandler(async (req, res) => {
+  const user = req.user
+  const { problemId, runId } = req.pramas
+  if (!problemId || !runId) {
+    throw new ApiError(400, null, "please inlcude the problemId and runId in req")
+  }
+  const currentData = await TrialRunner.findOne({ _id: runId, userId: user.id })
+  if (!currentData) {
+    throw new ApiError(400, null, "no runLog wtih given id found")
+  }
+  return res.send(new ApiResponse(200, "successfully rerunning the prints"))
+})
+
+const DeletePrints = asyncHandler(async (req, res) => {
+  const user = req.user
+  const { runId } = req.params
+  if (!runId) {
+    throw new ApiError(400, null, "please inlcude the problemId and runId in req")
+  }
+  // const currentData = await TrialRunner.findOneAndDelete({ _id: runId, userId: user.id })
+  let currentData = "hello"
+  if (!currentData) {
+    throw new ApiError(400, null, "no runLog wtih given id found")
+  }
+  return res.send(new ApiResponse(200, "successfully delted prints"))
+})
+
 
 const ProgrammizExecutions = asyncHandler(async (req, res) => {
   const user = req.user;
@@ -195,6 +332,53 @@ const ProgrammizExecutions = asyncHandler(async (req, res) => {
   return res.send(new ApiResponse(200, 'successfully fethed programmiz results', programmizData))
 })
 
+const viewProgrammizLogs = asyncHandler(async (req, res) => {
+  const user = req.user
+  const { runId } = req.params
+
+  if (!runId) {
+    throw new ApiError(400, null, "please include the runId in req")
+  }
+  const data = await RawExecution.findOne({ _id: runId, userId: user.id }).select("language code execution_time status output createdAt")
+  if (!data) {
+    throw new ApiError(400, null, "raw execution not found")
+  }
+  return res.send(new ApiResponse(200, "fetched programmiz logs", data))
+})
 
 
-export { GetProfile, ChangePassword, RecentExecutions, AvgTestCaseStats, DeleteAvgTestStats, RecentPrintRuns, ProgrammizExecutions }
+const reRunPorgrammiz = asyncHandler(async (req, res) => {
+  const user = req.user
+  const { runId } = req.params
+  if (!runId) {
+    throw new ApiError(400, null, "please inlcude runID in req")
+  }
+  const dbdata = await RawExecution.findOne({ _id: runId, userId: user.id }).select("language code createdAt")
+  if (!dbdata) {
+    throw new ApiError(500, null, "execution data not found")
+  }
+  return res.send(new ApiResponse(200, "successfully re runned execution", dbdata))
+})
+
+const DeleteProgrammiz = asyncHandler(async (req, res) => {
+  const user = req.user
+  const { runId } = req.params
+  if (!runId) {
+    throw new ApiError(400, null, "execution id is not found in req")
+  }
+  // const dbData = await RawExecution.findOneAndDelete({ _id: runId, userId: user.id })
+  const dbData = "hello"
+  if (!dbData) {
+    throw new ApiError(500, null, "execution not found or requires permission")
+  }
+  return res.send(new ApiResponse(200, "successfully deleted programmiz id", dbData))
+})
+
+
+export {
+  GetProfile, ChangePassword,
+  RecentExecutions, ViewRecentExecutionsDetail, LogRecentExecutionsDetail,
+  AvgTestCaseStats, viewRecentPrintsOutput, DeletePrints, viewAvgTestLogs, DeleteAvgTestStats,
+  RecentPrintRuns, reRunRecentPrints, ProgrammizExecutions, viewProgrammizLogs, reRunPorgrammiz,
+  DeleteProgrammiz, reRunRecentExecutions
+}
