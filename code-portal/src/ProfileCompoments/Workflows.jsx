@@ -16,6 +16,7 @@ import {
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu"
 import { DashboardLayout } from "./DashboardLayout"
+import LogsDialog from "./LogsDialog"
 import {
   getAvgProblemLogs,
   deleteAvgProblem,
@@ -35,6 +36,13 @@ const Skeleton = ({ className = "" }) => (
 
 export default function WorkflowsPage() {
   const queryClient = useQueryClient(); // access query client
+
+  const [dialog, setDialog] = useState({
+    open: false,
+    type: null,
+    id: null,
+  });
+
   const [searchQuery, setSearchQuery] = useState("")
   const [activeTab, setActiveTab] = useState("workflows")
   const [theme, setTheme] = useState(() => {
@@ -55,6 +63,13 @@ export default function WorkflowsPage() {
 
   const toggleTheme = () => setTheme((prev) => (prev === "dark" ? "light" : "dark"))
 
+  const openLogs = (type, id) => {
+    setDialog({ open: true, type, id });
+  };
+
+  const closeLogs = () => {
+    setDialog({ open: false, type: null, id: null });
+  };
 
   const { mutate: DeleteAvg } = useMutation({
     mutationFn: (problemId) => deleteAvgProblem(problemId), // receive it when called
@@ -215,6 +230,12 @@ export default function WorkflowsPage() {
   return (
     <DashboardLayout>
       <div className="space-y-8">
+        <LogsDialog
+          open={dialog.open}
+          type={dialog.type}
+          id={dialog.id}
+          onClose={closeLogs}
+        />
         {/* Header */}
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
@@ -417,7 +438,7 @@ export default function WorkflowsPage() {
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                              <DropdownMenuItem>View Logs</DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => openLogs("avgTestCase", workflow.problemId)}>View Logs</DropdownMenuItem>
                               <DropdownMenuSeparator />
                               <DropdownMenuItem className="text-red-600" onClick={() => handleDeleteAvg(workflow.problemId)}>Delete</DropdownMenuItem>
                             </DropdownMenuContent>
@@ -537,7 +558,8 @@ export default function WorkflowsPage() {
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end">
                                   <DropdownMenuItem>View Output</DropdownMenuItem>
-                                  <DropdownMenuItem>View Logs</DropdownMenuItem>
+
+                                  <DropdownMenuItem onClick={() => openLogs("printCase", run._id)}>View Logs</DropdownMenuItem>
                                   <DropdownMenuItem>Re-run</DropdownMenuItem>
 
                                   <DropdownMenuItem onClick={() => handleDeletePrint(run._id)}>Delete</DropdownMenuItem>
@@ -658,7 +680,7 @@ export default function WorkflowsPage() {
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end">
                                   <DropdownMenuItem>View Output</DropdownMenuItem>
-                                  <DropdownMenuItem>View Logs</DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => openLogs("programmizCase", run._id)}>View Logs</DropdownMenuItem>
                                   <DropdownMenuItem>Re-run</DropdownMenuItem>
                                   <DropdownMenuItem onClick={() => handleDeleteProgrammiz(run._id)}>Delete</DropdownMenuItem>
                                 </DropdownMenuContent>
