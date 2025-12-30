@@ -1,10 +1,10 @@
-
 import { useQuery } from "@tanstack/react-query";
 import LogContent from "./LogContent.jsx";
 import {
   getAvgProblemLogs,
   getPrintLogs,
   getProgrammizOutput,
+  getRecentProblemLogs,
 } from "./HelperFxns.js";
 
 
@@ -22,6 +22,9 @@ const LogsDialog = ({ open, onClose, type, id }) => {
       case "programmizCase":
         return getProgrammizOutput(id);
 
+      case "recentCase":
+        return getRecentProblemLogs(id)
+
       default:
         throw new Error("Invalid log type");
     }
@@ -35,7 +38,12 @@ const LogsDialog = ({ open, onClose, type, id }) => {
 
   if (!open) return null;
 
-  const logs = type === "programmizCase" && data?.data ? [data.data] : data?.data || [];
+  // Handle different response structures
+  const logs = type === "programmizCase" && data?.data
+    ? [data.data]
+    : type === "recentCase" && data?.data
+      ? [data.data]  // recentCase also returns single object in data
+      : data?.data || [];
 
   return (
     <>
@@ -81,4 +89,3 @@ const LogsDialog = ({ open, onClose, type, id }) => {
 };
 
 export default LogsDialog;
-

@@ -21,14 +21,13 @@ import {
   getAvgProblemLogs,
   deleteAvgProblem,
   getPrintLogs,
-  rerunPrint,
   deletePrint,
   getProgrammizOutput,
-  rerunProgrammiz,
   ApideleteProgrammiz
 } from "./HelperFxns.js";
 import axios from "axios"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
+import useSocketStore from "@/ZustandStore/SocketStore"
 
 const Skeleton = ({ className = "" }) => (
   <div className={`animate-pulse rounded-md bg-gray-200 dark:bg-gray-800 ${className}`} />
@@ -43,6 +42,7 @@ export default function WorkflowsPage() {
     id: null,
   });
 
+  const { clientId, isConnected } = useSocketStore()
   const [searchQuery, setSearchQuery] = useState("")
   const [activeTab, setActiveTab] = useState("workflows")
   const [theme, setTheme] = useState(() => {
@@ -138,6 +138,32 @@ export default function WorkflowsPage() {
       withCredentials: true
     })
     return response.data.data
+  }
+
+  const reRunPrint = async (runId) => {
+    console.log("run id:", runId)
+    if (!isConnected) {
+      console.log("no socket id return now")
+      return
+    }
+    console.log("socket id:", clientId)
+    const data = axios.get(`http://localhost:8000/profile/printCase_id/${runId}`, {
+      withCredentials: true
+    });
+    return data.data
+  }
+
+  const reRunProgrammiz = async (runId) => {
+    console.log("run id:", runId)
+    if (!isConnected) {
+      console.log("no socket id return now")
+      return
+    }
+    console.log("scoekt id:", clientId)
+    const data = axios.get(`http://localhost:8000/profile/reRunProgrammiz/${runId}`, {
+      withCredentials: true
+    });
+    return data.data
   }
 
   const {
@@ -557,10 +583,9 @@ export default function WorkflowsPage() {
                                   </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end">
-                                  <DropdownMenuItem>View Output</DropdownMenuItem>
 
                                   <DropdownMenuItem onClick={() => openLogs("printCase", run._id)}>View Logs</DropdownMenuItem>
-                                  <DropdownMenuItem>Re-run</DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => reRunPrint(run._id)}>Re-run</DropdownMenuItem>
 
                                   <DropdownMenuItem onClick={() => handleDeletePrint(run._id)}>Delete</DropdownMenuItem>
 
@@ -679,9 +704,8 @@ export default function WorkflowsPage() {
                                   </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end">
-                                  <DropdownMenuItem>View Output</DropdownMenuItem>
                                   <DropdownMenuItem onClick={() => openLogs("programmizCase", run._id)}>View Logs</DropdownMenuItem>
-                                  <DropdownMenuItem>Re-run</DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => reRunProgrammiz(run._id)}>Re-run</DropdownMenuItem>
                                   <DropdownMenuItem onClick={() => handleDeleteProgrammiz(run._id)}>Delete</DropdownMenuItem>
                                 </DropdownMenuContent>
                               </DropdownMenu>

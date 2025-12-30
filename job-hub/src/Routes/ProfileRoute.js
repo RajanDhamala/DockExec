@@ -1,7 +1,7 @@
 import { Router } from "express";
 import AuthUser from "../Middlewares/AuthMiddelware.js"
 import {
-  ViewRecentExecutionsDetail, GetProfile, ChangePassword, RecentExecutions, reRunRecentExecutions, LogRecentExecutionsDetail, AvgTestCaseStats, viewAvgTestLogs, DeleteAvgTestStats, RecentPrintRuns, viewRecentPrintsOutput, reRunRecentPrints, DeletePrints, ProgrammizExecutions, reRunPorgrammiz,
+  ViewRecentExecutionsDetail, GetProfile, getRecentActivity, ChangePassword, RecentExecutions, reRunRecentExecutions, LogRecentExecutionsDetail, DelRecentExecution, AvgTestCaseStats, viewAvgTestLogs, DeleteAvgTestStats, RecentPrintRuns, viewRecentPrintsOutput, reRunRecentPrints, DeletePrints, ProgrammizExecutions, reRunPorgrammiz,
   DeleteProgrammiz, viewProgrammizLogs
 } from "../Controllers/ProfileController.js"
 
@@ -13,12 +13,14 @@ ProfileRouter.get("/", (req, res) => {
 })
 
 ProfileRouter.get("/usrProfile", AuthUser, GetProfile)
+ProfileRouter.get("/recentActivity", AuthUser, getRecentActivity)
 
 ProfileRouter.post("/changePassord", AuthUser, ChangePassword)
 
 ProfileRouter.get("/recentExe", AuthUser, RecentExecutions)
 ProfileRouter.get("/reRunrecentExe/:runId", AuthUser, reRunRecentExecutions)
 ProfileRouter.get("/LogRecentExe/:exeId", AuthUser, LogRecentExecutionsDetail)
+ProfileRouter.delete("/delRecentExe/:exeId", AuthUser, DelRecentExecution)
 
 ProfileRouter.get("/recentExeViews/:exeId", AuthUser, ViewRecentExecutionsDetail)
 

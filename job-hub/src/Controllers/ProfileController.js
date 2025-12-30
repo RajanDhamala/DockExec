@@ -6,7 +6,9 @@ import ApiResponse from "../Utils/ApiResponse.js";
 import User from "../Schemas/UserSchema.js"
 import { hashPassword } from "../Utils/Authutils.js";
 import TestCase from "../Schemas/TestCaseSchema.js"
+import RecentActivity from "../Schemas/RecentActivitySchema.js"
 import mongoose from "mongoose";
+import pushrecentactivity from "../Utils/UtilsRecentActivity.js"
 
 const GetProfile = asyncHandler(async (req, res) => {
   const user = req.user;
@@ -22,6 +24,24 @@ const GetProfile = asyncHandler(async (req, res) => {
   }
 })
 
+const getRecentActivity=asyncHandler(async(req,res)=>{
+  const user=req.user
+  
+let userActivity = await RecentActivity.findOne(
+  { userId: user.id },
+  {
+    MetaData: { $slice: -5 } 
+  }
+);
+
+  if(!userActivity){
+  userActivity=await RecentActivity.create({
+  userId:user.id
+})
+    throw new ApiError(400,null,"logs not found")
+  }
+  return res.send(new ApiResponse(200,"succesfully fetched activity data",userActivity))
+})
 
 const ChangePassword = asyncHandler(async (req, res) => {
   const user = req.user
@@ -41,6 +61,14 @@ const ChangePassword = asyncHandler(async (req, res) => {
   const hashedPassword = await hashPassword(newPassword);
   isUser.password = hashedPassword
   await isUser.save()
+const activity = {
+    title: `password changed`,
+    description: "login password changed",
+    status: "success",
+    browserMeta: {}
+  };
+
+  await pushrecentactivity(user._id, activity);
 
   return res.send(new ApiResponse(200, "user password changed successfully"))
 })
@@ -60,7 +88,7 @@ const RecentExecutions = asyncHandler(async (req, res) => {
 
     {
       $lookup: {
-        from: "problems",            // collection name
+        from: "problems",           
         localField: "problemId",
         foreignField: "_id",
         as: "problem"
@@ -107,7 +135,7 @@ const ViewRecentExecutionsDetail = asyncHandler(async (req, res) => {
   if (!exeId) {
     throw new ApiError(400, null, "plese add execution id in req")
   }
-  const Viewdata = await TestCase.find({ userId: user.id, _id: exeId })
+  const Viewdata = await TestCase.findOne({ userId: user.id, _id: exeId }).select("language _id status code testCases createdAt")
   if (!Viewdata) {
     throw new ApiError(400, null, "not found")
   }
@@ -123,6 +151,14 @@ const reRunRecentExecutions = asyncHandler(async (req, res) => {
   }
   const getExecutionData = await TestCase.find({ _id: runId, userId: user.id })
   if (!getExecutionData) throw new ApiError(400, null, "exection metadata not found")
+const activity = {
+    title: `Rerunning the Submisson`,
+    description: "re execution "+runId,
+    status: "success",
+    browserMeta: {}
+  };
+
+  await pushrecentactivity(user.id, activity);
   return res.send(new ApiResponse(200, "successfully executed oldSubmission", getExecutionData))
 })
 
@@ -135,6 +171,28 @@ const LogRecentExecutionsDetail = asyncHandler(async (req, res) => {
   if (!data) throw new ApiError(400, null, "exection metadata not found")
 
   return res.send(new ApiResponse(200, "successfully executed oldSubmission", data))
+})
+
+const DelRecentExecution=asyncHandler(async(req,res)=>{
+  const user=req.user
+  const {exeId}=req.params;
+  
+  if (!exeId) throw new ApiError(400, null, "please include execution Id in request")
+
+  //   const result = await TestCase.delete({
+  //   userId: user.id,
+  //   problemId: problemId
+  // });
+  const result = "hello"
+  return res.send(
+    new ApiResponse(
+      200,
+      "success",
+      {
+        deletedCount: result.deletedCount
+      }
+    )
+  );
 })
 
 
@@ -228,12 +286,12 @@ const DeleteAvgTestStats = asyncHandler(async (req, res) => {
     throw new ApiError(400, null, "please add problemId in request params");
   }
 
-  // const result = await TestCase.deleteMany({
-  //   userId: user.id,
-  //   problemId: problemId
-  // });
+  const result = await TestCase.deleteMany({
+    userId: user.id,
+    problemId: problemId
+  });
 
-  const result = "hello"
+  // const result = "hello"
   return res.send(
     new ApiResponse(
       200,
@@ -314,8 +372,8 @@ const DeletePrints = asyncHandler(async (req, res) => {
   if (!runId) {
     throw new ApiError(400, null, "please inlcude the problemId and runId in req")
   }
-  // const currentData = await TrialRunner.findOneAndDelete({ _id: runId, userId: user.id })
-  let currentData = "hello"
+  const currentData = await TrialRunner.findOneAndDelete({ _id: runId, userId: user.id })
+  // let currentData = "hello"
   if (!currentData) {
     throw new ApiError(400, null, "no runLog wtih given id found")
   }
@@ -366,8 +424,8 @@ const DeleteProgrammiz = asyncHandler(async (req, res) => {
   if (!runId) {
     throw new ApiError(400, null, "execution id is not found in req")
   }
-  // const dbData = await RawExecution.findOneAndDelete({ _id: runId, userId: user.id })
-  const dbData = "hello"
+  const dbData = await RawExecution.findOneAndDelete({ _id: runId, userId: user.id })
+  // const dbData = "hello"
   if (!dbData) {
     throw new ApiError(500, null, "execution not found or requires permission")
   }
@@ -376,8 +434,8 @@ const DeleteProgrammiz = asyncHandler(async (req, res) => {
 
 
 export {
-  GetProfile, ChangePassword,
-  RecentExecutions, ViewRecentExecutionsDetail, LogRecentExecutionsDetail,
+  GetProfile,getRecentActivity, ChangePassword,
+  RecentExecutions, ViewRecentExecutionsDetail, LogRecentExecutionsDetail,DelRecentExecution,
   AvgTestCaseStats, viewRecentPrintsOutput, DeletePrints, viewAvgTestLogs, DeleteAvgTestStats,
   RecentPrintRuns, reRunRecentPrints, ProgrammizExecutions, viewProgrammizLogs, reRunPorgrammiz,
   DeleteProgrammiz, reRunRecentExecutions

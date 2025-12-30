@@ -42,10 +42,13 @@ import {
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Progress } from "@/components/ui/progress"
 import { Link } from "react-router-dom"
-import { useQuery } from "@tanstack/react-query"
+import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query"
 import axios from "axios"
 import useUserStore from "@/ZustandStore/UserStore"
 import { useNavigate } from "react-router-dom"
+import LogsDialog from "./LogsDialog"
+import { DelRecentProblem } from "./HelperFxns.js"
+import useSocketStore from "@/ZustandStore/SocketStore";
 
 // Sample data
 const metricsData = [
@@ -142,9 +145,56 @@ const recentActivity = [
 
 export default function Overview() {
   const [selectedPeriod, setSelectedPeriod] = useState("Last 30 days")
+  const queryClient = useQueryClient(); // access query client
+
+  const { clientId, isConnected } = useSocketStore()
+
+  const [dialog, setDialog] = useState({
+    open: false,
+    type: null,
+    id: null,
+  });
   const navigate = useNavigate()
 
   const { currentUser } = useUserStore()
+
+  const openLogs = (type, id) => {
+    console.log("logs ui will be shown ok")
+    setDialog({ open: true, type, id });
+  };
+
+  const closeLogs = () => {
+    setDialog({ open: false, type: null, id: null });
+  };
+
+  const { mutate: deleteRecent } = useMutation({
+    mutationFn: (runId) => DelRecentProblem(runId),
+    onSuccess: (_, runId) => {
+      console.log("Successfully deleted:", runId);
+
+      queryClient.setQueryData(["recentExe", "data"], (oldData) =>
+        oldData.filter((item) => item._id !== runId)
+      );
+    },
+  });
+
+  const handleDeleteRecent = (runId) => {
+    console.log("i got del req", runId);
+    deleteRecent(runId);
+  };
+
+  const reRunRecent = async (runId) => {
+    console.log("run id:", runId)
+    if (!isConnected) {
+      console.log("no socket id return now")
+      return
+    }
+    console.log("scoekt id:", clientId)
+    const data = axios.get(`http://localhost:8000/profile/reRunrecentExe/${runId}`, {
+      withCredentials: true
+    });
+    return data.data
+  }
 
   const fetchRecentExecutions = async () => {
     const request = await axios.get(`http://localhost:8000/profile/recentExe`, {
@@ -160,7 +210,7 @@ export default function Overview() {
 
   // Transform API data to table-friendly format
   const tableData = recentExcData?.map(item => ({
-    id: item._id.slice(0, 4), // first 4 characters of ID
+    id: item._id, // first 4 characters of ID
     name: item.name || "Unknown Problem",
     started: new Date(item.createdAt).toLocaleString("en-GB", {
       day: "2-digit",
@@ -185,9 +235,44 @@ export default function Overview() {
     console.log("we will be running last failed case ok man do u get it?")
   }
 
+  const getRecentActivity = async () => {
+    const response = await axios.get(`http://localhost:8000/profile/recentActivity`, {
+      withCredentials: true
+    })
+    return response.data.data.MetaData.reverse()
+  }
+
+  const { data: activityData, isLoading: isActivityLoading, isError: isActivityError } = useQuery({
+    queryKey: ["recentActivity"],
+    queryFn: getRecentActivity
+  })
+  const formatRelativeTime = (dateString) => {
+    const now = new Date()
+    const past = new Date(dateString)
+    const diffInSeconds = Math.floor((now.getTime() - past.getTime()) / 1000)
+
+    if (diffInSeconds < 60) {
+      return `${diffInSeconds} sec ago`
+    } else if (diffInSeconds < 3600) {
+      const minutes = Math.floor(diffInSeconds / 60)
+      return `${minutes} min ago`
+    } else if (diffInSeconds < 86400) {
+      const hours = Math.floor(diffInSeconds / 3600)
+      return `${hours} hour${hours > 1 ? 's' : ''} ago`
+    } else {
+      const days = Math.floor(diffInSeconds / 86400)
+      return `${days} day${days > 1 ? 's' : ''} ago`
+    }
+  }
 
   return (
     <div className="min-h-screen bg-white">
+      <LogsDialog
+        open={dialog.open}
+        type={dialog.type}
+        id={dialog.id}
+        onClose={closeLogs}
+      />
       {/* Header */}
       <header className="h-16 border-b border-gray-200 bg-white px-6 flex items-center justify-between">
         <div className="flex items-center gap-4">
@@ -347,7 +432,7 @@ export default function Overview() {
                     <RefreshCw className="w-6 h-6 text-blue-600" />
                   </div>
                   <div onClick={RerunLastFailedCase}>
-                    <h3 className="font-medium text-gray-900">Re-run last failed</h3>
+                    <h3 className="font-medium text-gray-900" >Re-run last failed</h3>
                     <p className="text-sm text-gray-600">Retry last failed TestCase</p>
                   </div>
                 </div>
@@ -495,7 +580,7 @@ export default function Overview() {
                         tableData.map((workflow) => (
 
                           <TableRow key={workflow.id} className="hover:bg-gray-50">
-                            <TableCell className="font-mono text-sm">{workflow.id}</TableCell>
+                            <TableCell className="font-mono text-sm">{workflow.id.slice(0, 4)}</TableCell>
                             <TableCell className="font-medium">{workflow.name}</TableCell>
                             <TableCell className="text-gray-600">{workflow.started}</TableCell>
                             <TableCell className="text-gray-600">{workflow.duration}</TableCell>
@@ -530,9 +615,12 @@ export default function Overview() {
                                   </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end">
-                                  <DropdownMenuItem>View Details</DropdownMenuItem>
-                                  <DropdownMenuItem>Re-run</DropdownMenuItem>
-                                  <DropdownMenuItem>View Logs</DropdownMenuItem>
+                                  <DropdownMenuItem
+                                    onClick={() => openLogs("recentCase", workflow.id)}>
+                                    View Logs
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => reRunRecent(workflow.id)}>Re-run</DropdownMenuItem>
+                                  <DropdownMenuItem className="text-red-600" onClick={() => handleDeleteRecent(workflow.id)}>Delete</DropdownMenuItem>
                                   <DropdownMenuSeparator />
                                   <DropdownMenuItem className="text-red-600">Cancel</DropdownMenuItem>
                                 </DropdownMenuContent>
@@ -599,29 +687,39 @@ export default function Overview() {
                 </CardHeader>
                 <CardContent className="p-0">
                   <div className="space-y-0">
-                    {recentActivity.map((activity, index) => (
-                      <div
-                        key={index}
-                        className="flex items-center gap-3 p-4 hover:bg-gray-50 border-b border-gray-100 last:border-b-0"
-                      >
+                    {isActivityLoading ? (
+                      <div className="p-4 text-sm text-gray-500">Loading... </div>
+                    ) : isActivityError ? (
+                      <div className="p-4 text-sm text-red-500">Failed to load activity</div>
+                    ) : activityData && activityData.length > 0 ? (
+                      activityData.map((activity, index) => (
                         <div
-                          className={`w-2 h-2 rounded-full ${activity.status === "success" ? "bg-green-500" : "bg-red-500"}`}
-                        ></div>
-                        <div className="flex-1 min-w-0">
-                          <div className="font-medium text-sm text-gray-900 truncate">{activity.activity}</div>
-                          <div className="text-xs text-gray-600">
-                            {activity.time} • {activity.duration}
+                          key={activity._id || index}
+                          className="flex items-center gap-3 p-4 hover:bg-gray-50 border-b border-gray-100 last:border-b-0"
+                        >
+                          <div
+                            className={`w-2 h-2 rounded-full ${activity.status === "success" ? "bg-green-500" : "bg-red-500"}`}
+                          ></div>
+                          <div className="flex-1 min-w-0">
+                            <div className="font-medium text-sm text-gray-900 truncate">
+                              {activity.title}
+                            </div>
+                            <div className="text-xs text-gray-600">
+                              {formatRelativeTime(activity.atTime)}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    ))}
+                      ))
+                    ) : (
+                      <div className="p-4 text-sm text-gray-500">No recent activity</div>
+                    )}
                   </div>
                 </CardContent>
               </Card>
             </div>
           </div>
         </main>
-      </div>
-    </div>
+      </div >
+    </div >
   )
 }

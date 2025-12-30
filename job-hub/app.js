@@ -1,4 +1,5 @@
 import express from "express";
+import ProfileRouter from "./src/Routes/ProfileRoute.js";
 import { GithubProvider, GoogleProvider } from './src/GithubProvider.js';
 import cookieParser from "cookie-parser";
 import cors from "cors";
@@ -13,6 +14,7 @@ import { LogTrialResult, LogRawExecution, LogTestCaseResult } from "./src/Contro
 import client from "prom-client";
 import dotenv from "dotenv"
 import { loginOrLinkUser } from "./src/Utils/OuthUtils.js";
+import NotificationRouter from "./src/Routes/NotificationRoute.js"
 
 dotenv.config()
 
@@ -67,7 +69,7 @@ GoogleProvider(
   onError
 );
 await connectRedis();
-
+//
 // (async () => {
 //   try {
 //     await initkafka();
@@ -139,6 +141,9 @@ await connectRedis();
 //   }
 // })();
 //
+
+
+
 app.get("/", (req, res) => {
   res.send("Server is up and running");
 });
@@ -150,5 +155,7 @@ app.use((err, req, res, next) => {
 app.use("/users", UserRouter)
 app.use("/api", ApiRouter)
 app.use("/code", CodeRouter)
+app.use("/profile", ProfileRouter)
+app.use("/notification", NotificationRouter)
 
 export default app;

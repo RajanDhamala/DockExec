@@ -3,6 +3,8 @@ import User from "../Schemas/UserSchema.js";
 import asyncHandler from "../Utils/AsyncHandler.js";
 import { CreateAccessToken, CreateRefreshToken } from "./Authutils.js";
 
+import pushrecentactivity from "./UtilsRecentActivity.js";
+
 const setAuthCookies = (res, user) => {
   const accessToken = CreateAccessToken(user._id, user.email, user.fullname);
   const refreshToken = CreateRefreshToken(user._id, user.email, user.fullname);
@@ -27,6 +29,14 @@ const loginOrLinkUser = asyncHandler(async (data, res, providerField) => {
   const providerId = data.userData.id;
 
   let user = await User.findOne({ [providerField]: providerId });
+  const activity = {
+    title: `${providerField} Login haai 32`,
+    description: "Just now logged in",
+    status: "success",
+    browserMeta: {}
+  };
+
+  await pushrecentactivity(user._id, activity);
 
   if (!user) {
     user = await User.findOne({ email: data.email });
@@ -45,6 +55,7 @@ const loginOrLinkUser = asyncHandler(async (data, res, providerField) => {
         password: null
       });
     }
+
   }
 
   setAuthCookies(res, user);
