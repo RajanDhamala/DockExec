@@ -10,7 +10,8 @@ pnpm-debug.log*
 
 # Environment files
 .env
-.env.*
+.env.local
+.env.*.local
 
 # Dependencies
 node_modules/
