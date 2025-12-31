@@ -61,7 +61,7 @@ const CodeBlock = ({ title, children, lang, tone = "default" }) => {
           <button
             type="button"
             onClick={handleCopy}
-            className="inline-flex items-center gap-1 rounded-md border border-gray-200 dark:border-slate-700 bg-white dark: bg-gray-800 px-2 py-1 text-xs text-gray-700 dark:text-gray-200 hover:border-blue-400 hover:text-blue-600 dark:hover:text-blue-300 transition"
+            className="inline-flex items-center gap-1 rounded-md border border-gray-200 dark:border-slate-700 bg-white dark:bg-gray-800 px-2 py-1 text-xs text-gray-700 dark:text-gray-200 hover:border-blue-400 hover:text-blue-600 dark:hover:text-blue-300 transition"
             aria-label="Copy code"
           >
             {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}

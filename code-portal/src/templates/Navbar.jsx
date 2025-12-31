@@ -68,7 +68,7 @@ function Navbar() {
                       className="w-full px-4 py-2 text-left text-sm text-slate-300 hover:bg-slate-800 flex items-center gap-2"
                       onClick={() => {
                         setIsProfileOpen(false)
-                        navigate("/profile")
+                        navigate("/overview")
                       }}
                     >
                       <User size={16} />
