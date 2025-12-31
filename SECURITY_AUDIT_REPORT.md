@@ -72,28 +72,32 @@ Comprehensive scans found:
 
 ### 1. Hardcoded IP Addresses (Low Priority)
 
-**Issue:** Some configuration files contain hardcoded local IP addresses:
+**Current Issue:** The following configuration files currently contain hardcoded local IP addresses in the codebase:
 
-**File:** `docker-compose.yml` (Line 26)
+**Location 1:** `docker-compose.yml` (Line 26)
 ```yaml
 KAFKA_ADVERTISED_LISTENERS: |
   PLAINTEXT://192.168.18.26:29092,PLAINTEXT_DOCKER://kafka:9092
 ```
 
-**File:** `go-exec/cmd/server/main.go` (Line 130)
+**Location 2:** `go-exec/cmd/server/main.go` (Line 130)
 ```go
 broker := os.Getenv("KAFKA_BROKER")
 if broker == "" {
-    broker = "192.168.18.26:29092"  // Hardcoded fallback
+    broker = "192.168.18.26:29092"  // Hardcoded fallback IP
 }
 ```
 
-**Recommendation:**
-- These are local development IPs and not sensitive
-- However, for better portability, consider using `localhost` or making them configurable
-- The IP `192.168.18.26` appears to be a development machine IP
+**Analysis:**
+- These are local development IPs and **not sensitive security credentials**
+- The IP `192.168.18.26` appears to be a development machine's local network address
+- This does not expose any secrets but may cause portability issues for other developers
 
-**Suggested Fix:**
+**Recommendation:**
+- For better portability across different development environments, consider using `localhost` or making them configurable via environment variables
+- This is a convenience/portability issue, not a security vulnerability
+
+**Suggested Fix (Optional):**
 ```go
 // In go-exec/cmd/server/main.go
 if broker == "" {
@@ -177,8 +181,8 @@ No high-priority security issues found.
 No medium-priority security issues found.
 
 ### Low Priority
-1. ✅ Replace hardcoded local IP `192.168.18.26` with `localhost` for better portability
-2. ✅ Create `.env.example` files for documentation
+1. 🔄 Replace hardcoded local IP `192.168.18.26` with `localhost` for better portability (currently exists in codebase)
+2. ✅ Create `.env.example` files for documentation (completed)
 
 ### Enhancement (Optional)
 1. Consider adding a `SECURITY.md` file with security policy and reporting procedures
