@@ -1,15 +1,15 @@
 import { Kafka } from "kafkajs";
 
 const kafka = new Kafka({
-  clientId: 'my-app',
-  brokers: ['192.168.2.140:29092']
+    clientId: 'my-app',
+    brokers: ['192.168.18.26:29092']
 })
 
-const producer=kafka.producer()
-const consumer=kafka.consumer({groupId:"dock-exec"})
+const producer = kafka.producer()
+const consumer = kafka.consumer({ groupId: "dock-exec" })
 
-const initkafka=async()=>{
-    try {   
+const initkafka = async () => {
+    try {
         await producer.connect();
         await consumer.connect()
         console.log("conncetion with the broker established");

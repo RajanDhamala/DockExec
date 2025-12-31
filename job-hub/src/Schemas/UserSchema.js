@@ -34,6 +34,24 @@ const UserSchema = new mongoose.Schema({
     type: Date
   }, bio: {
     type: String
+  }, plan: {
+    type: String,
+    enum: ["free", "pro"],
+    default: "free",
+  },
+  location: {
+    type: {
+      type: String,
+      enum: ["Point"],
+      required: true,
+      default: "Point"
+    },
+    coordinates: {
+      type: [Number],
+      default: undefined,
+      min: [-180, -90],
+      max: [180, 90]
+    }
   },
   solvedTestCases: [
     {
@@ -48,6 +66,8 @@ const UserSchema = new mongoose.Schema({
   ]
 }, { timestamps: true });
 
+
+UserSchema.index({ location: "2dsphere" });
 const UserModel = mongoose.model('User', UserSchema);
 
 export default UserModel;

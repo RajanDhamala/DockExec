@@ -4,11 +4,13 @@ import TrialRunner from "../Schemas/TrialSchema.js"
 import ApiError from "../Utils/ApiError.js";
 import ApiResponse from "../Utils/ApiResponse.js";
 import User from "../Schemas/UserSchema.js"
-import { hashPassword } from "../Utils/Authutils.js";
 import TestCase from "../Schemas/TestCaseSchema.js"
 import RecentActivity from "../Schemas/RecentActivitySchema.js"
 import mongoose from "mongoose";
 import pushrecentactivity from "../Utils/UtilsRecentActivity.js"
+
+import { hashPassword, verifyPassword } from "../Utils/Authutils.js"
+
 
 const GetProfile = asyncHandler(async (req, res) => {
   const user = req.user;
@@ -51,7 +53,7 @@ const ChangePassword = asyncHandler(async (req, res) => {
     throw new ApiError(400, null, "include old and new passwod in req")
   }
 
-  const isUser = await User.findOne({ _id: user.id }).select("passwod")
+  const isUser = await User.findOne({ _id: user.id }).select("password")
   const isPasswordValid = await verifyPassword(currentPassword, isUser.password);
 
   if (!isPasswordValid) {

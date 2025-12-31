@@ -1,4 +1,5 @@
 import express from "express";
+import TokenRouter from "./src/Routes/TokenRoute.js";
 import ProfileRouter from "./src/Routes/ProfileRoute.js";
 import { GithubProvider, GoogleProvider } from './src/GithubProvider.js';
 import cookieParser from "cookie-parser";
@@ -36,8 +37,10 @@ app.get("/metrics", async (req, res) => {
   }
 });
 app.use(cookieParser());
-app.use(express.urlencoded({ extended: true, limit: "1mb" }));
-app.use(express.json());
+
+app.use(express.json({ limit: "3mb" }));
+app.use(express.urlencoded({ extended: true, limit: "3mb" }));
+
 
 const onGithubSuccess = async (req, res, data) => {
   loginOrLinkUser(data, res, "githubProviderId")
@@ -157,5 +160,6 @@ app.use("/api", ApiRouter)
 app.use("/code", CodeRouter)
 app.use("/profile", ProfileRouter)
 app.use("/notification", NotificationRouter)
+app.use("/token", TokenRouter)
 
 export default app;

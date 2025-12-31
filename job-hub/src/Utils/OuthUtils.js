@@ -36,12 +36,13 @@ const loginOrLinkUser = asyncHandler(async (data, res, providerField) => {
     browserMeta: {}
   };
 
-  await pushrecentactivity(user._id, activity);
 
   if (!user) {
     user = await User.findOne({ email: data.email });
 
     if (user) {
+
+      await pushrecentactivity(user._id, activity);
       user[providerField] = providerId;
       user.avatar = user.avatar || data.userData.avatar_url;
       user.fullname = user.fullname || data.userData.name;

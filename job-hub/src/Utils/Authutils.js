@@ -1,7 +1,5 @@
 import bcrypt from "bcrypt"
 import jwt from 'jsonwebtoken';
-import dotenv from "dotenv"
-dotenv.config()
 
 const hashPassword=async(plain,rounds=10)=>{
     return  await bcrypt.hash(plain, rounds)

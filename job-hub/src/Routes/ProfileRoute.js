@@ -15,7 +15,7 @@ ProfileRouter.get("/", (req, res) => {
 ProfileRouter.get("/usrProfile", AuthUser, GetProfile)
 ProfileRouter.get("/recentActivity", AuthUser, getRecentActivity)
 
-ProfileRouter.post("/changePassord", AuthUser, ChangePassword)
+ProfileRouter.post("/changePassword", AuthUser, ChangePassword)
 
 ProfileRouter.get("/recentExe", AuthUser, RecentExecutions)
 ProfileRouter.get("/reRunrecentExe/:runId", AuthUser, reRunRecentExecutions)

@@ -1,6 +1,7 @@
 import Router from "express"
 import { getList, GetData, TestPrintCode, GetSubmissons, GetTestCode, AllTestCases, SaveDraftCode } from "../Controllers/LeetCodeController.js"
 import AuthUser from "../Middlewares/AuthMiddelware.js"
+import countTokenMiddle from "../Middlewares/TokenCountMiddle.js"
 
 const CodeRouter = Router()
 
@@ -12,9 +13,9 @@ CodeRouter.get("/list", getList)
 
 CodeRouter.get("/getProblem/:id", GetData)
 
-CodeRouter.post("/testPrint", AuthUser, TestPrintCode)
+CodeRouter.post("/testPrint", AuthUser, countTokenMiddle, TestPrintCode)
 
-CodeRouter.post("/Alltest_Cases", AuthUser, AllTestCases)
+CodeRouter.post("/Alltest_Cases", AuthUser, countTokenMiddle, AllTestCases)
 
 CodeRouter.post("/saveDraft", AuthUser, SaveDraftCode)
 

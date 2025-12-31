@@ -57,6 +57,8 @@ const GetData = asyncHandler(async (req, res) => {
 
 const TestPrintCode = asyncHandler(async (req, res) => {
   const { code, language, problemId, socketId } = req.body;
+  const {count}=req.tokenCount
+  console.log("father token count:",count)
   const uuid = uuidv4();
   console.log(req.body)
 
@@ -170,7 +172,6 @@ const AllTestCases = asyncHandler(async (req, res) => {
 const GetSubmissons = asyncHandler(async (req, res) => {
   const { problemId } = req.params;
   const userId = req.user.id;
-  console.log("params:", req.params," userId:",req.user)
   let submissions;
   if (!problemId) {
     throw new ApiError(400, 'please provide problemId in request params');
