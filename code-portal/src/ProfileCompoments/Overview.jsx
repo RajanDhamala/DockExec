@@ -90,7 +90,7 @@ export default function Overview() {
   };
 
   const closeLogs = () => {
-    setDialog({ open: false, type: null, id: null });
+    setDialog({ open: false, type: null, id: null })
   };
 
   const { mutate: deleteRecent } = useMutation({
@@ -229,7 +229,7 @@ export default function Overview() {
         onClose={closeLogs}
       />
 
-      <main className="flex-1 p-4 md:p-8 bg-gray-50 dark:bg-gray-950 transition-colors duration-200">
+      <main className="flex-1 p-4 md:p-8 bg-gray-50  dark:bg-gray-950 transition-colors duration-200">
         <div className="mb-8">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
             <div>
@@ -260,16 +260,15 @@ export default function Overview() {
             open={isLocation}
             onClose={() => setIsLocation(false)}
           >
-
           </LocationDialog>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
             <Card className="p-6 hover:shadow-md transition-shadow cursor-pointer border-gray-200 bg-white dark:bg-gray-900 dark:border-slate-700 shadow-sm">
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-4" onClick={StartFreshCodeExe}>
                 <div className="w-12 h-12 bg-green-100 dark:bg-green-900/20 rounded-lg flex items-center justify-center">
                   <Plus className="w-6 h-6 text-green-600 dark:text-green-400" />
                 </div>
-                <div onClick={StartFreshCodeExe}>
+                <div >
                   <h3 className="font-medium text-gray-900 dark:text-white">New workflow</h3>
                   <p className="text-sm text-gray-600 dark:text-slate-400">Start a fresh code execution</p>
                 </div>

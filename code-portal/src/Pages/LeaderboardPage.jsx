@@ -79,7 +79,7 @@ export default function LeaderboardPage() {
           variant="outline"
           onClick={fetchLeaderboard}
           disabled={loading}
-          className="dark:border-gray-700 dark:text-gray-300"
+          className=" dark:border-gray-700 dark:text-gray-300"
         >
           <RefreshCw className={`w-4 h-4 mr-2 ${loading ? "animate-spin" : ""}`} />
           Refresh

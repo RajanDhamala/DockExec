@@ -202,7 +202,6 @@ const UpdateUserCoordinates = asyncHandler(async (req, res) => {
 });
 
 
-
 const getUsersNearYou = asyncHandler(async (req, res) => {
   const user = req.user;
   const maxDistance = 5000; // 5 km
@@ -244,6 +243,24 @@ const getUsersNearYou = asyncHandler(async (req, res) => {
   );
 });
 
+const getUserBasicMetrics=asyncHandler(async(req,res)=>{
+  const user=req.user
+  const {timeline}=req.prams
+
+  if(!timeline || !user){
+    throw new ApiError(400,null,"please include the token and from timeline")
+  }
+    const userData=await UserModel.findOne({_id:user.id}).select("points")
+  const basicMetrics={
+    "Point":userData.points,
+    "TotalRuns":22, //this will include pipeline to calcualte all the submisson done wihin timeline
+    "AcceptanceRate":"22%" //basic total submission and success rate
+    ,"AvgExecutionTime":"00.2s" //basic execution time or we can expose the most used langaue btw
+  }
+    
+  return res.send(new ApiResponse(200,"succesfullly fetched the profile metrics",basicMetrics))
+}) 
+
 
 const DeleteAccount = asyncHandler(async (req, res) => {
   const user = req.user
@@ -267,6 +284,6 @@ const DeleteAccount = asyncHandler(async (req, res) => {
 
 
 export {
-  RegisterUser, LoginUser, LogoutUser, UpdatePoints, ChangeUserAvatar, UpdateProfile, UpdateUserCoordinates, getUsersNearYou, DeleteAccount
+  RegisterUser, LoginUser, LogoutUser, UpdatePoints, ChangeUserAvatar, UpdateProfile, UpdateUserCoordinates, getUsersNearYou, DeleteAccount,getUserBasicMetrics
 }
 // 192.168.18.26:29092 ip i want

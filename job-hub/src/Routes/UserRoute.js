@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { LoginUser, RegisterUser, LogoutUser, UpdatePoints, ChangeUserAvatar, UpdateProfile, UpdateUserCoordinates, getUsersNearYou, DeleteAccount } from "../Controllers/UserController.js"
+import { LoginUser, RegisterUser, LogoutUser, UpdatePoints, ChangeUserAvatar, UpdateProfile, UpdateUserCoordinates, getUsersNearYou,getUserBasicMetrics, DeleteAccount } from "../Controllers/UserController.js"
 import AuthUser from "../Middlewares/AuthMiddelware.js"
 import Whoareu from "../Middlewares/MeMiddle.js";
 import avatarUpload from "../Middlewares/AvatarUpload.js"
@@ -17,6 +17,7 @@ UserRouter.get("/points/:problemId/:userId", UpdatePoints)
 UserRouter.get("/me", Whoareu)
 UserRouter.post("/upCoordinates", AuthUser, UpdateUserCoordinates)
 UserRouter.get("/location", AuthUser, getUsersNearYou)
+UserRouter.get("/Basicmetrics",AuthUser,getUserBasicMetrics)
 
 UserRouter.delete("/delAccount", AuthUser, DeleteAccount)
 
