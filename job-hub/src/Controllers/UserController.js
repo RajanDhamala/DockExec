@@ -1,10 +1,12 @@
 import asyncHandler from "../Utils/AsyncHandler.js"
+import mongoose from "mongoose"
 import ApiError from "../Utils/ApiError.js"
 import ApiResponse from "../Utils/ApiResponse.js"
 import Joi from "joi"
 import { hashPassword, verifyPassword, CreateAccessToken, CreateRefreshToken } from "../Utils/Authutils.js"
 import UserModel from "../Schemas/UserSchema.js"
 import Problem from "../Schemas/CodeSchema.js"
+import TestCase from "../Schemas/TestCaseSchema.js"
 
 
 const registerSchema = Joi.object({
@@ -243,24 +245,86 @@ const getUsersNearYou = asyncHandler(async (req, res) => {
   );
 });
 
-const getUserBasicMetrics=asyncHandler(async(req,res)=>{
-  const user=req.user
-  const {timeline}=req.prams
+const getUserBasicMetrics = asyncHandler(async (req, res) => {
+  const user = req.user;
+  const days = Number(req.params.days);
 
-  if(!timeline || !user){
-    throw new ApiError(400,null,"please include the token and from timeline")
+  if (!user || !days || isNaN(days)) {
+    throw new ApiError(400, null, "please include valid token and days");
   }
-    const userData=await UserModel.findOne({_id:user.id}).select("points")
-  const basicMetrics={
-    "Point":userData.points,
-    "TotalRuns":22, //this will include pipeline to calcualte all the submisson done wihin timeline
-    "AcceptanceRate":"22%" //basic total submission and success rate
-    ,"AvgExecutionTime":"00.2s" //basic execution time or we can expose the most used langaue btw
-  }
-    
-  return res.send(new ApiResponse(200,"succesfullly fetched the profile metrics",basicMetrics))
-}) 
 
+  const fromDate = new Date();
+  fromDate.setDate(fromDate.getDate() - days);
+  // rn the query is not optmized later will be optimized with better approch and code
+
+  // solvedCount for the user
+  const userData = await UserModel.aggregate([
+    { $match: { _id: new mongoose.Types.ObjectId(user.id) } },
+    {
+      $project: {
+        _id: 0,
+        fullname: 1,
+        solvedCount: {
+          $size: {
+            $ifNull: [
+              {
+                $filter: {
+                  input: "$solvedTestCases",
+                  as: "tc",
+                  cond: { $gte: ["$$tc.submitDate", fromDate] }
+                }
+              },
+              []
+            ]
+          }
+        }
+      }
+    }
+  ]);
+
+  const metrics = await TestCase.aggregate([
+    { $match: { userId: new mongoose.Types.ObjectId(user.id), createdAt: { $gte: fromDate } } },
+    {
+      $facet: {
+        totalRuns: [{ $count: "count" }],
+        topLanguages: [
+          { $group: { _id: "$language", totalCount: { $sum: 1 } } },
+          { $sort: { totalCount: -1 } },
+          { $limit: 3 }
+        ]
+      }
+    }
+  ]);
+
+  console.log(metrics);
+
+  const sucessCount = await TestCase.aggregate([
+    {
+      $match: {
+        userId: new mongoose.Types.ObjectId(user.id),
+        status: { $in: ["success", "failed"] },
+        createdAt: { $gte: fromDate }
+      }
+    },
+    {
+      $group: {
+        _id: "$status",       // group only by status
+        count: { $sum: 1 }    // total per status
+      }
+    }
+  ])
+
+  const totalruns = metrics[0].totalRuns[0]?.count || 0;
+  const topLanguages = metrics[0].topLanguages;
+
+  return res.status(200).json(
+    new ApiResponse(
+      200,
+      "successfully fetched the profile metrics",
+      { totalruns, topLanguages, solvedCount: userData[0]?.solvedCount, "success": sucessCount[0], "failed": sucessCount[1], }
+    )
+  );
+});
 
 const DeleteAccount = asyncHandler(async (req, res) => {
   const user = req.user
@@ -282,8 +346,7 @@ const DeleteAccount = asyncHandler(async (req, res) => {
 })
 
 
-
 export {
-  RegisterUser, LoginUser, LogoutUser, UpdatePoints, ChangeUserAvatar, UpdateProfile, UpdateUserCoordinates, getUsersNearYou, DeleteAccount,getUserBasicMetrics
+  RegisterUser, LoginUser, LogoutUser, UpdatePoints, ChangeUserAvatar, UpdateProfile, UpdateUserCoordinates, getUsersNearYou, DeleteAccount, getUserBasicMetrics
 }
 // 192.168.18.26:29092 ip i want

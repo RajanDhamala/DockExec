@@ -12,6 +12,13 @@ import PageNotFound from "./Pages/PageNotFound";
 import { useEffect } from "react";
 import useUserStore from "./ZustandStore/UserStore";
 import axios from "axios";
+import WorkflowPage from "./ProfileCompoments/Workflows.jsx"
+import SettingsPage from "./ProfileCompoments/Settings";
+import Overview from "./ProfileCompoments/Overview";
+import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
+import { DashboardLayout } from "./ProfileCompoments/DashboardLayout";
+import LocationPage from "./ProfileCompoments/LocationPage.jsx"
+import LeaderboardPage from "./Pages/LeaderboardPage";
 
 function App() {
   const { initSocket, socket, isConnected } = useSocketStore();
@@ -42,6 +49,7 @@ function App() {
 
   return (
     <QueryClientProvider client={queryClient}>
+      <ReactQueryDevtools initialIsOpen={false} />
       <Toaster position="top-right" reverseOrder={false} />
       <Router>
         <Suspense fallback={<Loader />}>
@@ -53,7 +61,18 @@ function App() {
             <Route path="/test" element={<LazyTestPage />} />
 
             <Route path="/profile" element={<LazyProfilePage />} />
-            <Route path="/settings" element={< LazySettingsPage />} />
+
+            <Route path="/location" element={<LocationPage />} />
+
+            <Route path="/leaderboard" element={<LeaderboardPage />} />
+
+
+            {/* test routes (WITH dashboard layout) */}
+            <Route element={<DashboardLayout />}>
+              <Route path="/overview" element={<Overview />} />
+              <Route path="workflows" element={<WorkflowPage />} />
+              <Route path="/settings" element={<SettingsPage />} />
+            </Route>
 
             <Route path="*" element={<PageNotFound />} />
           </Routes>

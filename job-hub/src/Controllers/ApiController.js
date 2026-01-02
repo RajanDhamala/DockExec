@@ -36,7 +36,6 @@ const execCode = asyncHandler(async (req, res) => {
   );
 });
 
-
 const migratedb = asyncHandler(async (req, res) => {
   const postdata = [
     {

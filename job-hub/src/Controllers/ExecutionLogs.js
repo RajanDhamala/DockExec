@@ -66,7 +66,7 @@ const LogTestCaseResult = async (data) => {
       problemId: ref.problemId,
       language: ref.language,
       totalTestCases: total,
-      status: "executed",
+      status: passedNo === total ? "success" : "failed",
       testCases: formattedTestCases,
       passedNo: passedNo,
       code: ref.orginalCode
@@ -78,9 +78,8 @@ const LogTestCaseResult = async (data) => {
   }
 };
 
-
 const LogRawExecution = async (data) => {
-  console.log("language :",data.language)
+  console.log("language :", data.language)
   try {
     return await RawExecution.create({
       _id: data.jobId,

@@ -42,6 +42,7 @@ const workflowDistribution = [
   { name: "Analytics", value: 15, color: "#f59e0b" },
   { name: "Other", value: 5, color: "#ef4444" },
 ]
+const data=["name:","rajan dhaamal"]
 
 const errorAnalysis = [
   { name: "Timeout", count: 45, percentage: 35 },

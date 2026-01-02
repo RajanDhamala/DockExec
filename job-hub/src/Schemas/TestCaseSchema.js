@@ -8,7 +8,7 @@ const TestCaseSchema = new mongoose.Schema({
   problemId: { type: mongoose.Schema.ObjectId, required: true, ref: "Problem", index: true },    // problem _id string
   language: { type: String, required: true },
   totalTestCases: { type: Number, default: 0 },
-  status: { type: String, default: "executed" },
+  status: { type: String, default: "failed" },
   passedNo: { type: Number },
   code: { type: String },
   testCases: [

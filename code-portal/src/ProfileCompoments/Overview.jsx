@@ -2,12 +2,7 @@
 
 import { useState } from "react"
 import {
-  Search,
-  Bell,
-  Home,
   Workflow,
-  BarChart3,
-  Settings,
   AlertTriangle,
   RefreshCw,
   MoreHorizontal,
@@ -19,38 +14,32 @@ import {
   XCircle,
   ChevronDown,
   Plus,
-  ArrowRight,
   Users,
   Eye,
-  Database,
+  Code,
 } from "lucide-react"
 import { AreaChart, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Area } from "recharts"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
   DropdownMenuSeparator,
-  DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Progress } from "@/components/ui/progress"
-import { Link } from "react-router-dom"
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query"
 import axios from "axios"
-import useUserStore from "@/ZustandStore/UserStore"
 import { useNavigate } from "react-router-dom"
 import LogsDialog from "./LogsDialog"
 import { DelRecentProblem } from "./HelperFxns.js"
 import useSocketStore from "@/ZustandStore/SocketStore";
-import { DashboardLayout } from "./DashboardLayout"
 import LocationDialog from "./LocationPage"
+import toast from "react-hot-toast"
 
 // Sample data
 const metricsData = [
@@ -71,7 +60,7 @@ const chartData = [
 ]
 
 export default function Overview() {
-  const [selectedPeriod, setSelectedPeriod] = useState("Last 30 days")
+  const [selectedPeriod, setSelectedPeriod] = useState(30)
   const queryClient = useQueryClient(); // access query client
 
   const { clientId, isConnected } = useSocketStore()
@@ -82,6 +71,19 @@ export default function Overview() {
     id: null,
   });
   const navigate = useNavigate()
+
+
+  const fetchBasicMetrics = async () => {
+    const response = await axios.get(`http://localhost:8000/users/Basicmetrics/${selectedPeriod}`, {
+      withCredentials: true
+    })
+    return response.data.data
+  }
+
+  const { data: MetricsData, isLoading: MetricsLoading, isError: MetricsError } = useQuery({
+    queryKey: ["Basicmetrics", `${selectedPeriod}`],
+    queryFn: fetchBasicMetrics
+  })
 
 
   const openLogs = (type, id) => {
@@ -116,10 +118,15 @@ export default function Overview() {
       return
     }
     console.log("scoekt id:", clientId)
-    const data = axios.get(`http://localhost:8000/profile/reRunrecentExe/${runId}`, {
-      withCredentials: true
-    });
-    return data.data
+    try {
+      const data = axios.get(`http://localhost:8000/profile/reRunrecentExe/${runId}`, {
+        withCredentials: true
+      });
+      toast.success("Successfully re run code")
+      return data.data
+    } catch (error) {
+      toast.error("failed while re-executing code")
+    }
   }
 
   const fetchRecentExecutions = async () => {
@@ -214,7 +221,7 @@ export default function Overview() {
   const [isLocation, setIsLocation] = useState(false)
 
   // Format as dollars
-  const tokensToDollar = (tokens) => `$${(tokens / 1000).toFixed(2)}`;
+  const tokensToDollar = (tokens) => `$${(tokens / 10000).toFixed(2)}`;
   const formatDate = (dateString) => {
     if (!dateString) return "--";
     const date = new Date(dateString);
@@ -240,13 +247,13 @@ export default function Overview() {
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="outline" className="gap-2 bg-transparent border-gray-200 dark:border-slate-700 dark:text-slate-300 dark:hover:text-white dark:hover:bg-gray-800 flex-1 md:flex-none justify-center">
-                    {selectedPeriod} <ChevronDown className="w-4 h-4" />
+                    Last {selectedPeriod} days <ChevronDown className="w-4 h-4" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent className="dark:bg-gray-900 dark:border-slate-700">
-                  <DropdownMenuItem className="dark:text-slate-300 dark:focus:bg-gray-800" onClick={() => setSelectedPeriod("Last 7 days")}>Last 7 days</DropdownMenuItem>
-                  <DropdownMenuItem className="dark:text-slate-300 dark:focus:bg-gray-800" onClick={() => setSelectedPeriod("Last 30 days")}>Last 30 days</DropdownMenuItem>
-                  <DropdownMenuItem className="dark:text-slate-300 dark:focus:bg-gray-800" onClick={() => setSelectedPeriod("Last 90 days")}>Last 90 days</DropdownMenuItem>
+                  <DropdownMenuItem className="dark:text-slate-300 dark:focus:bg-gray-800" onClick={() => setSelectedPeriod(7)}>Last 7 days</DropdownMenuItem>
+                  <DropdownMenuItem className="dark:text-slate-300 dark:focus:bg-gray-800" onClick={() => setSelectedPeriod(30)}>Last 30 days</DropdownMenuItem>
+                  <DropdownMenuItem className="dark:text-slate-300 dark:focus:bg-gray-800" onClick={() => setSelectedPeriod(90)}>Last 90 days</DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
               <Button className="bg-purple-600 hover:bg-purple-700 text-white flex-1 md:flex-none" onClick={(e) => setIsLocation(true)}>
@@ -301,31 +308,117 @@ export default function Overview() {
           </div>
         </div>
 
+
+
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          {metricsData.map((metric, index) => (
-            <Card key={index} className="border-gray-200 bg-white dark:bg-gray-900 dark:border-slate-700 shadow-sm">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="w-10 h-10 bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center">
-                    <metric.icon className="w-5 h-5 text-gray-600 dark:text-gray-400" />
-                  </div>
-                  <div
-                    className={`flex items-center gap-1 text-sm ${metric.trend === "up" ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}
-                  >
-                    {metric.trend === "up" ? (
+          {MetricsLoading ? (
+            // Loading Skeleton
+            Array(4)
+              .fill(0)
+              .map((_, index) => (
+                <Card key={index} className="border-gray-200 bg-white dark:bg-gray-900 dark:border-slate-700 shadow-sm animate-pulse">
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="w-10 h-10 bg-gray-200 dark:bg-gray-800 rounded-lg" />
+                      <div className="w-12 h-4 bg-gray-200 dark:bg-gray-700 rounded" />
+                    </div>
+                    <div className="h-6 w-24 bg-gray-200 dark:bg-gray-700 rounded mb-1" />
+                    <div className="h-4 w-16 bg-gray-200 dark:bg-gray-700 rounded" />
+                  </CardContent>
+                </Card>
+              ))
+          ) : MetricsError ? (
+            <div className="col-span-4 text-red-600 dark:text-red-400 text-center">
+              Failed to load metrics. Please try again.
+            </div>
+          ) : (
+            <>
+              {/* Total Runs */}
+              <Card className="border-gray-200 bg-white dark:bg-gray-900 dark:border-slate-700 shadow-sm">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="w-10 h-10 bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center">
+                      <Workflow className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+                    </div>
+                    <div className="flex items-center gap-1 text-sm text-green-600 dark:text-green-400">
                       <TrendingUp className="w-3 h-3" />
-                    ) : (
-                      <TrendingDown className="w-3 h-3" />
-                    )}
-                    {metric.change}
+                      +{/* optional % change */}
+                    </div>
                   </div>
-                </div>
-                <div className="text-2xl font-semibold text-gray-900 dark:text-white mb-1">{metric.value}</div>
-                <div className="text-sm text-gray-600 dark:text-slate-400">{metric.label}</div>
-              </CardContent>
-            </Card>
-          ))}
+                  <div className="text-2xl font-semibold text-gray-900 dark:text-white mb-1">
+                    {MetricsData.totalruns}
+                  </div>
+                  <div className="text-sm text-gray-600 dark:text-slate-400">Total Runs</div>
+                </CardContent>
+              </Card>
+
+              {/* Acceptance Rate */}
+              <Card className="border-gray-200 bg-white dark:bg-gray-900 dark:border-slate-700 shadow-sm">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="w-10 h-10 bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center">
+                      <CheckCircle className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+                    </div>
+                    <div className="flex items-center gap-1 text-sm text-green-600 dark:text-green-400">
+                      <TrendingUp className="w-3 h-3" />
+                      +{/* optional % change */}
+                    </div>
+                  </div>
+                  <div className="text-2xl font-semibold text-gray-900 dark:text-white mb-1">
+                    {((MetricsData.totalruns - MetricsData.failed.count) / MetricsData.totalruns * 100).toFixed(1)}%
+                  </div>
+                  <div className="text-sm text-gray-600 dark:text-slate-400">Acceptance Rate</div>
+                </CardContent>
+              </Card>
+
+              {/* Top 2 Languages */}
+
+              {/* Top 2 Languages */}
+              <Card className="border-gray-200 bg-white dark:bg-gray-900 dark:border-slate-700 shadow-sm">
+                <CardContent className="p-6">
+                  <div className="text-2xl font-semibold text-gray-900 dark:text-white mb-2">
+                    Most Used Language
+                  </div>
+
+                  <div className="text-sm text-gray-600 dark:text-slate-400 space-y-1">
+                    {MetricsData.topLanguages.slice(0, 2).map(lang => (
+                      <div key={lang._id} className="flex justify-between">
+                        <span>{lang._id}</span>
+                        <span className="font-medium">{lang.totalCount}</span>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+
+
+
+              {/* Your Activity */}
+              <Card className="border-gray-200 bg-white dark:bg-gray-900 dark:border-slate-700 shadow-sm">
+                <CardContent className="p-6">
+                  <div className="flex items-center mb-4">
+                    <div className="w-10 h-10 bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center">
+                      <Users className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+                    </div>
+                  </div>
+
+                  <div className="text-2xl font-semibold text-gray-900 dark:text-white mb-1">
+                    {MetricsData.solvedCount > 0
+                      ? MetricsData.solvedCount
+                      : "0"}
+                  </div>
+                  <div className="text-sm text-gray-600 dark:text-slate-400">
+                    {MetricsData.solvedCount > 0
+                      ? "Problems Solved"
+                      : "No problems solved yet, start solving!"}
+                  </div>
+                </CardContent>
+              </Card>
+
+            </>
+          )}
         </div>
+
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="col-span-1 lg:col-span-2 space-y-8">

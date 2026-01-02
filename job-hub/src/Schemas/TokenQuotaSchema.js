@@ -10,7 +10,7 @@ const TokenQuotaSchema = new mongoose.Schema({
   },
   monthlyLimit: {
     type: Number,
-    default: 30000,
+    default: 300000,
     min: 0
   },
   tokenUsed: {

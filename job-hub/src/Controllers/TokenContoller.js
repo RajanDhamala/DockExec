@@ -2,7 +2,7 @@ import asyncHandler from "../Utils/AsyncHandler.js"
 import ApiResponse from "../Utils/ApiResponse.js"
 import TokenLog from "../Schemas/TokenLogsSchema.js"
 import TokenQuota from "../Schemas/TokenQuotaSchema.js"
-import {RedisClient} from "../Utils/RedisClient.js"
+import { RedisClient } from "../Utils/RedisClient.js"
 
 
 const getUrToken = asyncHandler(async (req, res) => {
@@ -14,7 +14,7 @@ const getUrToken = asyncHandler(async (req, res) => {
 
   try {
     data = await RedisClient.hGetAll(key);
-    console.log("data:",data)
+    console.log("data:", data)
     return res.send(new ApiResponse(200, "fetched token data", data))
   } catch (error) {
     console.log("error during redis call")
@@ -33,8 +33,6 @@ const getUrToken = asyncHandler(async (req, res) => {
   }
   return res.send(new ApiResponse(200, "fetched user tokenScheam", isAvailable))
 })
-
-
 
 export { getUrToken }
 

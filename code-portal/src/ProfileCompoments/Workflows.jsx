@@ -24,6 +24,7 @@ import {
 import axios from "axios"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import useSocketStore from "@/ZustandStore/SocketStore"
+import toast from "react-hot-toast"
 
 const Skeleton = ({ className = "" }) => (
   <div className={`animate-pulse rounded-md bg-gray-200 dark:bg-gray-800 ${className}`} />
@@ -129,10 +130,15 @@ export default function WorkflowsPage() {
       return
     }
     console.log("socket id:", clientId)
-    const data = axios.get(`http://localhost:8000/profile/printCase_id/${runId}`, {
-      withCredentials: true
-    });
-    return data.data
+    try {
+      const data = axios.get(`http://localhost:8000/profile/printCase_id/${runId}`, {
+        withCredentials: true
+      });
+      toast.success("code being executed")
+      return data.data
+    } catch (error) {
+      toast.error("failed to re run code")
+    }
   }
 
   const reRunProgrammiz = async (runId) => {
@@ -142,10 +148,16 @@ export default function WorkflowsPage() {
       return
     }
     console.log("scoekt id:", clientId)
-    const data = axios.get(`http://localhost:8000/profile/reRunProgrammiz/${runId}`, {
-      withCredentials: true
-    });
-    return data.data
+    try {
+      const data = axios.get(`http://localhost:8000/profile/reRunProgrammiz/${runId}`, {
+        withCredentials: true
+      });
+
+      toast.success("Successfully started reexecution")
+      return data.data
+    } catch (error) {
+      toast.error("failed to reexecute code")
+    }
   }
 
   const {

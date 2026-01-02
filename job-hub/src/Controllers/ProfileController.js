@@ -26,23 +26,23 @@ const GetProfile = asyncHandler(async (req, res) => {
   }
 })
 
-const getRecentActivity=asyncHandler(async(req,res)=>{
-  const user=req.user
-  
-let userActivity = await RecentActivity.findOne(
-  { userId: user.id },
-  {
-    MetaData: { $slice: -5 } 
-  }
-);
+const getRecentActivity = asyncHandler(async (req, res) => {
+  const user = req.user
 
-  if(!userActivity){
-  userActivity=await RecentActivity.create({
-  userId:user.id
-})
-    throw new ApiError(400,null,"logs not found")
+  let userActivity = await RecentActivity.findOne(
+    { userId: user.id },
+    {
+      MetaData: { $slice: -5 }
+    }
+  );
+
+  if (!userActivity) {
+    userActivity = await RecentActivity.create({
+      userId: user.id
+    })
+    throw new ApiError(400, null, "logs not found")
   }
-  return res.send(new ApiResponse(200,"succesfully fetched activity data",userActivity))
+  return res.send(new ApiResponse(200, "succesfully fetched activity data", userActivity))
 })
 
 const ChangePassword = asyncHandler(async (req, res) => {
@@ -63,7 +63,7 @@ const ChangePassword = asyncHandler(async (req, res) => {
   const hashedPassword = await hashPassword(newPassword);
   isUser.password = hashedPassword
   await isUser.save()
-const activity = {
+  const activity = {
     title: `password changed`,
     description: "login password changed",
     status: "success",
@@ -90,7 +90,7 @@ const RecentExecutions = asyncHandler(async (req, res) => {
 
     {
       $lookup: {
-        from: "problems",           
+        from: "problems",
         localField: "problemId",
         foreignField: "_id",
         as: "problem"
@@ -153,9 +153,9 @@ const reRunRecentExecutions = asyncHandler(async (req, res) => {
   }
   const getExecutionData = await TestCase.find({ _id: runId, userId: user.id })
   if (!getExecutionData) throw new ApiError(400, null, "exection metadata not found")
-const activity = {
+  const activity = {
     title: `Rerunning the Submisson`,
-    description: "re execution "+runId,
+    description: "re execution " + runId,
     status: "success",
     browserMeta: {}
   };
@@ -175,17 +175,16 @@ const LogRecentExecutionsDetail = asyncHandler(async (req, res) => {
   return res.send(new ApiResponse(200, "successfully executed oldSubmission", data))
 })
 
-const DelRecentExecution=asyncHandler(async(req,res)=>{
-  const user=req.user
-  const {exeId}=req.params;
-  
+const DelRecentExecution = asyncHandler(async (req, res) => {
+  const user = req.user
+  const { exeId } = req.params;
+
   if (!exeId) throw new ApiError(400, null, "please include execution Id in request")
 
-  //   const result = await TestCase.delete({
-  //   userId: user.id,
-  //   problemId: problemId
-  // });
-  const result = "hello"
+  const result = await TestCase.deleteOne({
+    userId: user.id,
+    _id: exeId
+  });
   return res.send(
     new ApiResponse(
       200,
@@ -436,8 +435,8 @@ const DeleteProgrammiz = asyncHandler(async (req, res) => {
 
 
 export {
-  GetProfile,getRecentActivity, ChangePassword,
-  RecentExecutions, ViewRecentExecutionsDetail, LogRecentExecutionsDetail,DelRecentExecution,
+  GetProfile, getRecentActivity, ChangePassword,
+  RecentExecutions, ViewRecentExecutionsDetail, LogRecentExecutionsDetail, DelRecentExecution,
   AvgTestCaseStats, viewRecentPrintsOutput, DeletePrints, viewAvgTestLogs, DeleteAvgTestStats,
   RecentPrintRuns, reRunRecentPrints, ProgrammizExecutions, viewProgrammizLogs, reRunPorgrammiz,
   DeleteProgrammiz, reRunRecentExecutions
