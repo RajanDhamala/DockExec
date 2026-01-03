@@ -8,15 +8,12 @@ import {
   MoreHorizontal,
   Filter,
   TrendingUp,
-  TrendingDown,
-  Clock,
   CheckCircle,
   XCircle,
   ChevronDown,
   Plus,
   Users,
   Eye,
-  Code,
 } from "lucide-react"
 import { AreaChart, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Area } from "recharts"
 import { Button } from "@/components/ui/button"
@@ -41,14 +38,6 @@ import useSocketStore from "@/ZustandStore/SocketStore";
 import LocationDialog from "./LocationPage"
 import toast from "react-hot-toast"
 
-// Sample data
-const metricsData = [
-  { label: "Total Runs", value: "237", change: "+12%", trend: "up", icon: Workflow },
-  { label: "Acceptance Rate", value: "98.7%", change: "+0.3%", trend: "up", icon: CheckCircle },
-  { label: "Avg Execution Time", value: "38s", change: "-2.1s", trend: "up", icon: Clock },
-  { label: "Your Activity", value: "1,423", change: "+8.2%", trend: "up", icon: Users },
-]
-
 const chartData = [
   { name: "Jan", sales: 4000, views: 2400, workflows: 240 },
   { name: "Feb", sales: 3000, views: 1398, workflows: 221 },
@@ -63,7 +52,7 @@ export default function Overview() {
   const [selectedPeriod, setSelectedPeriod] = useState(30)
   const queryClient = useQueryClient(); // access query client
 
-  const { clientId, isConnected } = useSocketStore()
+  const { clientId, isConnected, socket, setCurrentJobId } = useSocketStore()
 
   const [dialog, setDialog] = useState({
     open: false,
@@ -99,7 +88,6 @@ export default function Overview() {
     mutationFn: (runId) => DelRecentProblem(runId),
     onSuccess: (_, runId) => {
       console.log("Successfully deleted:", runId);
-
       queryClient.setQueryData(["recentExe", "data"], (oldData) =>
         oldData.filter((item) => item._id !== runId)
       );
@@ -111,23 +99,31 @@ export default function Overview() {
     deleteRecent(runId);
   };
 
+
   const reRunRecent = async (runId) => {
-    console.log("run id:", runId)
-    if (!isConnected) {
-      console.log("no socket id return now")
-      return
+    console.log("Run ID:", runId);
+    if (!isConnected || !socket) {
+      console.log("Socket not connected yet, returning...");
+      return;
     }
-    console.log("scoekt id:", clientId)
+    console.log("Socket ID:", socket.id);
+
     try {
-      const data = axios.get(`http://localhost:8000/profile/reRunrecentExe/${runId}`, {
-        withCredentials: true
-      });
-      toast.success("Successfully re run code")
-      return data.data
+      const { data } = await axios.get(
+        `http://localhost:8000/profile/reRunrecentExe/${runId}/${socket.id}`,
+        { withCredentials: true }
+      );
+      toast.success("Successfully re-run code");
+      console.log("Successfully re-run code, jobId:", data.data);
+      setCurrentJobId(data.data);
+
+      return data.data; // return jobId
     } catch (error) {
-      toast.error("failed while re-executing code")
+      console.error("Error while re-running code:", error);
+      toast.error("Failed while re-executing code");
     }
-  }
+  };
+
 
   const fetchRecentExecutions = async () => {
     const request = await axios.get(`http://localhost:8000/profile/recentExe`, {
@@ -365,7 +361,7 @@ export default function Overview() {
                     </div>
                   </div>
                   <div className="text-2xl font-semibold text-gray-900 dark:text-white mb-1">
-                    {((MetricsData.totalruns - MetricsData.failed.count) / MetricsData.totalruns * 100).toFixed(1)}%
+                    {((MetricsData?.totalruns - MetricsData.failed?.count) / MetricsData?.totalruns * 100).toFixed(1)}%
                   </div>
                   <div className="text-sm text-gray-600 dark:text-slate-400">Acceptance Rate</div>
                 </CardContent>

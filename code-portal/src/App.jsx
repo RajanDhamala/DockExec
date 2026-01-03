@@ -67,6 +67,7 @@ function App() {
             <Route path="/leaderboard" element={<LeaderboardPage />} />
 
 
+
             {/* test routes (WITH dashboard layout) */}
             <Route element={<DashboardLayout />}>
               <Route path="/overview" element={<Overview />} />
@@ -78,7 +79,7 @@ function App() {
           </Routes>
         </Suspense>
       </Router>
-    </QueryClientProvider>
+    </QueryClientProvider >
   );
 }
 

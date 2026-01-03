@@ -1,4 +1,5 @@
 import asyncHandler from "../Utils/AsyncHandler.js";
+import TokenCounter from "../Utils/TokenCounter.js"
 import RawExecution from "../Schemas/RawSchema.js"
 import TrialRunner from "../Schemas/TrialSchema.js"
 import ApiError from "../Utils/ApiError.js";
@@ -8,7 +9,10 @@ import TestCase from "../Schemas/TestCaseSchema.js"
 import RecentActivity from "../Schemas/RecentActivitySchema.js"
 import mongoose from "mongoose";
 import pushrecentactivity from "../Utils/UtilsRecentActivity.js"
-
+import { producer } from "../Utils/KafkaProvider.js";
+import { v4 as uuidv4 } from 'uuid';
+import { RedisClient } from "../Utils/RedisClient.js"
+import Problem from "../Schemas/CodeSchema.js"
 import { hashPassword, verifyPassword } from "../Utils/Authutils.js"
 
 
@@ -146,23 +150,88 @@ const ViewRecentExecutionsDetail = asyncHandler(async (req, res) => {
 
 const reRunRecentExecutions = asyncHandler(async (req, res) => {
   const user = req.user
-  const { runId } = req.params
+  const { runId, socketId } = req.params
 
-  if (!runId) {
+  if (!runId || !socketId) {
     throw new ApiError(400, null, "please include id of execution")
   }
   const getExecutionData = await TestCase.find({ _id: runId, userId: user.id })
-  if (!getExecutionData) throw new ApiError(400, null, "exection metadata not found")
-  const activity = {
-    title: `Rerunning the Submisson`,
-    description: "re execution " + runId,
-    status: "success",
-    browserMeta: {}
-  };
+  const code = getExecutionData[0].code
 
-  await pushrecentactivity(user.id, activity);
-  return res.send(new ApiResponse(200, "successfully executed oldSubmission", getExecutionData))
+  const language = getExecutionData[0].language
+
+  try {
+    const tokenResult = await TokenCounter({ code, language }, user.id);
+    if (tokenResult.message) {
+      return res.send(new ApiResponse(402, null, tokenResult.message));
+    }
+    const tokenLength = tokenResult.tokenCount;
+  } catch (err) {
+    console.error(err);
+    return res.send(new ApiResponse(500, null, "Token validation failed"));
+  }
+
+  const problemId = getExecutionData[0].problemId
+  console.log("get exe", getExecutionData)
+  if (!getExecutionData) throw new ApiError(400, null, "exection metadata not found")
+
+  const uuid = uuidv4();
+
+  const ProblemKey = `problem:${problemId}`;
+  let problemData;
+
+  try {
+    console.log("probleid", problemId)
+    const cached = await RedisClient.get(ProblemKey);
+    if (cached) {
+      problemData = JSON.parse(cached);
+      console.log("problem cached found btw")
+    }
+    else {
+      problemData = await Problem.findById(problemId);
+
+      if (!problemData) throw new ApiError(404, 'Problem not found');
+      await RedisClient.set(ProblemKey, JSON.stringify(problemData), { EX: 120 });
+    }
+  } catch {
+    problemData = await Problem.findById(problemId);
+    if (!problemData) throw new ApiError(404, 'Problem not found 2');
+    await RedisClient.set(ProblemKey, JSON.stringify(problemData), { EX: 120 });
+  }
+  // Produce execution job
+  const testCaseToSend = problemData.testCases;
+  const submissionsKey = `submissions:${req.user.id}:${problemData._id}`;
+  await RedisClient.del(submissionsKey);
+  await producer.send({
+    topic: "all_cases_submission",
+    messages: [{
+      value: JSON.stringify({
+        code,
+        language,
+        id: uuid,
+        testCase: testCaseToSend,
+        socketId,
+        userId: req.user.id,
+        problemId: problemData._id,
+        function_name: problemData.function_name,
+        parameters: problemData.parameters,
+        wrapper_type: problemData.wrapper_type
+      })
+    }]
+
+  });
+  console.log("code produced for running")
+  return res.send(new ApiResponse(200, "successfully executed oldSubmission", uuid))
 })
+
+// const activity = {
+//   title: `Rerunning the Submisson`,
+//   description: "re execution " + runId,
+//   status: "success",
+//   browserMeta: {}
+// };
+//
+// await pushrecentactivity(user.id, activity);
 
 const LogRecentExecutionsDetail = asyncHandler(async (req, res) => {
   const user = req.user
@@ -356,15 +425,52 @@ const viewRecentPrintsOutput = asyncHandler(async (req, res) => {
 
 const reRunRecentPrints = asyncHandler(async (req, res) => {
   const user = req.user
-  const { problemId, runId } = req.pramas
-  if (!problemId || !runId) {
+  const { runId, socketId } = req.params
+  if (!socketId || !runId) {
     throw new ApiError(400, null, "please inlcude the problemId and runId in req")
   }
   const currentData = await TrialRunner.findOne({ _id: runId, userId: user.id })
   if (!currentData) {
     throw new ApiError(400, null, "no runLog wtih given id found")
   }
-  return res.send(new ApiResponse(200, "successfully rerunning the prints"))
+  const code = currentData.generatedCode
+  const language = currentData.language
+  const problemId = currentData._id
+  const uuid = uuidv4();
+
+  try {
+    const tokenResult = await TokenCounter({ code, language }, user.id);
+    if (tokenResult.message) {
+      return res.send(new ApiResponse(402, null, tokenResult.message));
+    }
+    const tokenLength = tokenResult.tokenCount;
+  } catch (err) {
+    console.error(err);
+    return res.send(new ApiResponse(500, null, "Token validation failed"));
+  }
+
+  console.log(req.body)
+
+  if (!code || !language || !problemId) {
+    throw new ApiError(400, 'please include type, language, code,  and problemId in request');
+  }
+
+  await producer.send({
+    topic: "reRun_printCase",
+    messages: [{
+      value: JSON.stringify({
+        code,
+        language,
+        id: uuid,
+        socketId,
+        userId: req.user.id,
+        problemId: problemId,
+      })
+    }]
+
+  });
+
+  return res.send(new ApiResponse(200, 'code sent for running', { uuid }));
 })
 
 const DeletePrints = asyncHandler(async (req, res) => {
@@ -408,15 +514,49 @@ const viewProgrammizLogs = asyncHandler(async (req, res) => {
 
 const reRunPorgrammiz = asyncHandler(async (req, res) => {
   const user = req.user
-  const { runId } = req.params
-  if (!runId) {
+  const { runId, socketId } = req.params
+  if (!runId || !socketId) {
     throw new ApiError(400, null, "please inlcude runID in req")
   }
   const dbdata = await RawExecution.findOne({ _id: runId, userId: user.id }).select("language code createdAt")
   if (!dbdata) {
     throw new ApiError(500, null, "execution data not found")
   }
-  return res.send(new ApiResponse(200, "successfully re runned execution", dbdata))
+  const code = dbdata.code
+  const language = dbdata.language
+
+  try {
+    const tokenResult = await TokenCounter({ code, language }, user.id);
+    if (tokenResult.message) {
+      return res.send(new ApiResponse(402, null, tokenResult.message));
+    }
+  } catch (err) {
+    console.error(err);
+    return res.send(new ApiResponse(500, null, "Token validation failed"));
+  }
+
+  const uuid = uuidv4()
+  try {
+    await producer.send({
+      topic: "programiz_submission",
+      messages: [
+        {
+          userId: user.id,
+          value: JSON.stringify({ code, language, "id": uuid, "socketId": socketId, "userId": req.user.id }),
+        },
+      ],
+    });
+    console.log("Job produced successfully");
+    await RedisClient.set(`exec:${uuid}`, JSON.stringify({ code, language, id: uuid, socketId, userId: user.id }),
+      { EX: 120 }
+    );
+  } catch (error) {
+    console.log("Failed to produce job:", error);
+    throw new ApiError(400, "Failed to produce job for code execution");
+  }
+
+  return res.send(new ApiResponse(200, "successfully re runned execution", uuid))
+
 })
 
 const DeleteProgrammiz = asyncHandler(async (req, res) => {

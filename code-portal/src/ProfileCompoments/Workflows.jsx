@@ -39,7 +39,7 @@ export default function WorkflowsPage() {
     id: null,
   });
 
-  const { clientId, isConnected } = useSocketStore()
+  const { clientId, isConnected, socket } = useSocketStore()
   const [searchQuery, setSearchQuery] = useState("")
   const [activeTab, setActiveTab] = useState("workflows")
 
@@ -125,13 +125,13 @@ export default function WorkflowsPage() {
 
   const reRunPrint = async (runId) => {
     console.log("run id:", runId)
-    if (!isConnected) {
+    if (!isConnected || !socket) {
       console.log("no socket id return now")
       return
     }
     console.log("socket id:", clientId)
     try {
-      const data = axios.get(`http://localhost:8000/profile/printCase_id/${runId}`, {
+      const data = axios.get(`http://localhost:8000/profile/printCase_id/${runId}/${socket.id}`, {
         withCredentials: true
       });
       toast.success("code being executed")
@@ -143,13 +143,13 @@ export default function WorkflowsPage() {
 
   const reRunProgrammiz = async (runId) => {
     console.log("run id:", runId)
-    if (!isConnected) {
+    if (!isConnected || !socket) {
       console.log("no socket id return now")
       return
     }
     console.log("scoekt id:", clientId)
     try {
-      const data = axios.get(`http://localhost:8000/profile/reRunProgrammiz/${runId}`, {
+      const data = axios.get(`http://localhost:8000/profile/reRunProgrammiz/${runId}/${socket.id}`, {
         withCredentials: true
       });
 

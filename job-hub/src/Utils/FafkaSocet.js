@@ -28,6 +28,7 @@ const emitAllCaseResult = async (data) => {
       console.log("Skipping empty/dummy test result");
       return;
     } else {
+      console.log("emitting to certain endpoints", data.socketId)
       io.to(data.socketId).emit("all_test_result", data);
 
     }

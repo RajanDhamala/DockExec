@@ -5,7 +5,6 @@ import {
   DeleteProgrammiz, viewProgrammizLogs
 } from "../Controllers/ProfileController.js"
 
-
 const ProfileRouter = Router()
 
 ProfileRouter.get("/", (req, res) => {
@@ -18,7 +17,7 @@ ProfileRouter.get("/recentActivity", AuthUser, getRecentActivity)
 ProfileRouter.post("/changePassword", AuthUser, ChangePassword)
 
 ProfileRouter.get("/recentExe", AuthUser, RecentExecutions)
-ProfileRouter.get("/reRunrecentExe/:runId", AuthUser, reRunRecentExecutions)
+ProfileRouter.get("/reRunrecentExe/:runId/:socketId", AuthUser, reRunRecentExecutions)
 ProfileRouter.get("/LogRecentExe/:exeId", AuthUser, LogRecentExecutionsDetail)
 ProfileRouter.delete("/delRecentExe/:exeId", AuthUser, DelRecentExecution)
 
@@ -30,12 +29,12 @@ ProfileRouter.delete("/avgTest/:problemId", AuthUser, DeleteAvgTestStats)
 
 ProfileRouter.get("/printCases", AuthUser, RecentPrintRuns)
 ProfileRouter.get("/printTestOutput/:problemId", AuthUser, viewRecentPrintsOutput)
-ProfileRouter.get("/printCase_id/:problmeId/:runId", AuthUser, reRunRecentPrints)
+ProfileRouter.get("/printCase_id/:runId/:socketId", AuthUser, reRunRecentPrints)
 ProfileRouter.delete("/DelprintCase_id/:runId", AuthUser, DeletePrints)
 
 ProfileRouter.get("/programmizLogs", AuthUser, ProgrammizExecutions)
 ProfileRouter.get("/viewProgrammizOutput/:runId", AuthUser, viewProgrammizLogs)
-ProfileRouter.get("/reRunProgrammiz/:runId", AuthUser, reRunPorgrammiz)
+ProfileRouter.get("/reRunProgrammiz/:runId/:socketId", AuthUser, reRunPorgrammiz)
 ProfileRouter.delete("/deleteProgrammiz/:runId", AuthUser, DeleteProgrammiz)
 
 

@@ -326,6 +326,63 @@ const getUserBasicMetrics = asyncHandler(async (req, res) => {
   );
 });
 
+
+const getUserProblemAnalytics = async (userId, problemId) => {
+  try {
+    const results = await TestCase.aggregate([
+      {
+        $match: {
+          userId: new mongoose.Types.ObjectId(userId),
+          problemId: new mongoose.Types.ObjectId(problemId),
+        },
+      },
+      { $unwind: "$testCases" },
+      { $match: { "testCases.isPassed": true } },
+      {
+        $group: {
+          _id: {
+            language: "$language",
+            testCaseNumber: "$testCases.testCaseNumber",
+          },
+          avgExecutionTime: { $avg: "$testCases.duration" },
+          successRuns: { $sum: 1 },
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          language: "$_id.language",
+          testCaseNumber: "$_id.testCaseNumber",
+          avgExecutionTime: { $round: ["$avgExecutionTime", 4] },
+          successRuns: 1,
+        },
+      },
+      { $sort: { language: 1, testCaseNumber: 1 } },
+    ]);
+
+    return results;
+  } catch (err) {
+    console.error("Error fetching user analytics:", err);
+    return [];
+  }
+};
+
+
+const AvgExectionTimeMetrics = asyncHandler(async (req, res) => {
+
+  const user = req.user
+  const { language, problemId } = req.params
+
+  if (!language || !problemId) {
+    throw new ApiError(404, null, "please inlcude language and problemId")
+  }
+
+  const metrics = await getUserProblemAnalytics(user.id, problemId)
+  return res.send(new ApiResponse(200, "succesfully fetched profile metrics", metrics))
+
+})
+
+
 const DeleteAccount = asyncHandler(async (req, res) => {
   const user = req.user
   const userDel = await UserModel.findByIdAndDelete({ _id: user.id })
@@ -347,6 +404,6 @@ const DeleteAccount = asyncHandler(async (req, res) => {
 
 
 export {
-  RegisterUser, LoginUser, LogoutUser, UpdatePoints, ChangeUserAvatar, UpdateProfile, UpdateUserCoordinates, getUsersNearYou, DeleteAccount, getUserBasicMetrics
+  RegisterUser, LoginUser, LogoutUser, UpdatePoints, ChangeUserAvatar, UpdateProfile, UpdateUserCoordinates, getUsersNearYou, AvgExectionTimeMetrics, DeleteAccount, getUserBasicMetrics
 }
 // 192.168.18.26:29092 ip i want
