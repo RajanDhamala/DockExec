@@ -15,7 +15,7 @@ import {
   Users,
   Eye,
 } from "lucide-react"
-import { AreaChart, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Area } from "recharts"
+import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
@@ -61,6 +61,19 @@ export default function Overview() {
   });
   const navigate = useNavigate()
 
+  const fetchChartMetrics = async () => {
+    const response = await axios.get(`http://localhost:8000/users/timeMetrics`, {
+      withCredentials: true
+    })
+    console.log("data of chats:", response.data)
+    const reversedData = transformMetricsToChartData(response.data)
+    return reversedData
+  }
+
+  const { data: chartData, isLoading: chartLoading, isError: chartError } = useQuery({
+    queryKey: ["chartsdata", "hehe"],
+    queryFn: fetchChartMetrics
+  })
 
   const fetchBasicMetrics = async () => {
     const response = await axios.get(`http://localhost:8000/users/Basicmetrics/${selectedPeriod}`, {
@@ -222,6 +235,28 @@ export default function Overview() {
     if (!dateString) return "--";
     const date = new Date(dateString);
     return date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  };
+
+  const transformMetricsToChartData = (metrics) => {
+    // metrics: { PrintCase, TestCases, Programmiz }
+    const monthsMap = new Map();
+
+    Object.keys(metrics).forEach((key) => {
+      metrics[key].forEach((m) => {
+        const monthKey = `${m.year}-${m.month}`;
+        if (!monthsMap.has(monthKey)) {
+          monthsMap.set(monthKey, { name: `${m.month}/${m.year}`, PrintCase: 0, TestCases: 0, Programmiz: 0 });
+        }
+        monthsMap.get(monthKey)[key] = m.submissions;
+      });
+    });
+
+    // sort by year-month ascending
+    return Array.from(monthsMap.values()).sort((a, b) => {
+      const [ay, am] = a.name.split("/").map(Number).reverse();
+      const [by, bm] = b.name.split("/").map(Number).reverse();
+      return ay !== by ? ay - by : am - bm;
+    });
   };
   return (
     <>
@@ -421,19 +456,10 @@ export default function Overview() {
             {/* Charts Section */}
             <Card className="border-gray-200 bg-white dark:bg-gray-900 dark:border-slate-700 shadow-sm">
               <CardHeader className="pb-4">
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                  <div>
-                    <CardTitle className="text-lg font-semibold dark:text-white">Performance Analytics</CardTitle>
-                    <CardDescription className="dark:text-slate-400">Workflow execution trends and system metrics</CardDescription>
-                  </div>
-                  <Tabs defaultValue="workflows" className="w-full sm:w-auto">
-                    <TabsList className="grid w-full grid-cols-3 dark:bg-gray-800">
-                      <TabsTrigger value="workflows" className="dark:data-[state=active]:bg-gray-700 dark:text-slate-300">Workflows</TabsTrigger>
-                      <TabsTrigger value="sales" className="dark:data-[state=active]:bg-gray-700 dark:text-slate-300">Sales</TabsTrigger>
-                      <TabsTrigger value="views" className="dark:data-[state=active]:bg-gray-700 dark:text-slate-300">Views</TabsTrigger>
-                    </TabsList>
-                  </Tabs>
-                </div>
+                <CardTitle className="text-lg font-semibold dark:text-white">Performance Analytics</CardTitle>
+                <CardDescription className="dark:text-slate-400">
+                  Submissions per month across all systems
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="h-80 w-full">
@@ -452,28 +478,14 @@ export default function Overview() {
                         }}
                         wrapperClassName="dark:!bg-gray-800 dark:!border-slate-700 dark:!text-white"
                       />
-                      <Area
-                        type="monotone"
-                        dataKey="workflows"
-                        stroke="#8b5cf6"
-                        fill="#8b5cf6"
-                        fillOpacity={0.1}
-                        strokeWidth={2}
-                      />
-                      <Area
-                        type="monotone"
-                        dataKey="sales"
-                        stroke="#3b82f6"
-                        fill="#3b82f6"
-                        fillOpacity={0.1}
-                        strokeWidth={2}
-                      />
+                      <Area type="monotone" dataKey="PrintCase" stroke="#8b5cf6" fill="#8b5cf6" fillOpacity={0.1} strokeWidth={2} />
+                      <Area type="monotone" dataKey="TestCases" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.1} strokeWidth={2} />
+                      <Area type="monotone" dataKey="Programmiz" stroke="#f97316" fill="#f97316" fillOpacity={0.1} strokeWidth={2} />
                     </AreaChart>
                   </ResponsiveContainer>
                 </div>
               </CardContent>
             </Card>
-
             {/* Workflow Status Table */}
             <Card className="border-gray-200 bg-white dark:bg-gray-900 dark:border-slate-700 shadow-sm overflow-hidden">
               <CardHeader className="pb-4">

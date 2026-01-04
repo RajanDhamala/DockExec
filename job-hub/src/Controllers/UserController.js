@@ -7,6 +7,8 @@ import { hashPassword, verifyPassword, CreateAccessToken, CreateRefreshToken } f
 import UserModel from "../Schemas/UserSchema.js"
 import Problem from "../Schemas/CodeSchema.js"
 import TestCase from "../Schemas/TestCaseSchema.js"
+import TrialRunner from "../Schemas/TrialSchema.js"
+import RawExecution from "../Schemas/RawSchema.js"
 
 
 const registerSchema = Joi.object({
@@ -245,6 +247,17 @@ const getUsersNearYou = asyncHandler(async (req, res) => {
   );
 });
 
+const getLeaderboard = asyncHandler(async (req, res) => {
+  const topUsers = await UserModel.aggregate([
+    { $sort: { points: -1 } },   // sort by points descending
+    { $limit: 10 },              // top 10 users
+    { $project: { name: 1, points: 1, avatar: 1, fullname: 1 } } // optional: only return name + points
+  ]);
+  return res.json({
+    "data": topUsers
+  })
+})
+
 const getUserBasicMetrics = asyncHandler(async (req, res) => {
   const user = req.user;
   const days = Number(req.params.days);
@@ -382,6 +395,127 @@ const AvgExectionTimeMetrics = asyncHandler(async (req, res) => {
 
 })
 
+const fillEmptyMonths = (metrics, months = 6) => {
+  const now = new Date();
+  const result = [];
+
+  for (let i = months - 1; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+
+    const existing = metrics.find(
+      (e) => e.year === d.getFullYear() && e.month === d.getMonth() + 1
+    );
+
+    result.push({
+      year: d.getFullYear(),
+      month: d.getMonth() + 1,
+      submissions: existing ? existing.submissions : 0,
+      avgExecutionTime: existing ? existing.avgExecutionTime : 0
+    });
+  }
+
+  return result;
+};
+
+const exeMetrics = asyncHandler(async (req, res) => {
+  const user = req.user
+
+  const now = new Date();
+  const pipeline = [
+    { $match: { userId: new mongoose.Types.ObjectId(user.id) } },
+    {
+      $project: {
+        year: { $year: "$createdAt" },
+        month: { $month: "$createdAt" },
+        execution_time: 1
+      }
+    },
+    {
+      $group: {
+        _id: { year: "$year", month: "$month" },
+        submissions: { $sum: 1 },
+        avgExecutionTime: { $avg: "$execution_time" }
+      }
+    },
+    { $sort: { "_id.year": 1, "_id.month": 1 } },
+    {
+      $project: {
+        _id: 0,
+        year: "$_id.year",
+        month: "$_id.month",
+        submissions: 1,
+        avgExecutionTime: { $round: ["$avgExecutionTime", 4] }
+      }
+    }
+  ];
+  const pipeline2 = [
+    { $match: { userId: new mongoose.Types.ObjectId(user.id) } },
+    {
+      $project: {
+        year: { $year: "$createdAt" },
+        month: { $month: "$createdAt" },
+        execution_time: { $avg: "$testCases.duration" } // average per document
+      }
+    },
+    {
+      $group: {
+        _id: { year: "$year", month: "$month" },
+        submissions: { $sum: 1 },
+        avgExecutionTime: { $avg: "$execution_time" }
+      }
+    },
+    { $sort: { "_id.year": 1, "_id.month": 1 } },
+    {
+      $project: {
+        _id: 0,
+        year: "$_id.year",
+        month: "$_id.month",
+        submissions: 1,
+        avgExecutionTime: { $round: ["$avgExecutionTime", 4] }
+      }
+    }
+  ];
+
+  const pipeline3 = [
+    { $match: { userId: new mongoose.Types.ObjectId(user.id) } },
+    {
+      $project: {
+        year: { $year: "$createdAt" },
+        month: { $month: "$createdAt" },
+        execution_time: 1
+      }
+    },
+    {
+      $group: {
+        _id: { year: "$year", month: "$month" },
+        submissions: { $sum: 1 },
+        avgExecutionTime: { $avg: "$execution_time" }
+      }
+    },
+    { $sort: { "_id.year": 1, "_id.month": 1 } },
+    {
+      $project: {
+        _id: 0,
+        year: "$_id.year",
+        month: "$_id.month",
+        submissions: 1,
+        avgExecutionTime: { $round: ["$avgExecutionTime", 4] }
+      }
+    }
+  ];
+
+  const PrintCaseMetrics = await TrialRunner.aggregate(pipeline);
+  const TestCasesMetrics = await TestCase.aggregate(pipeline2);
+  const ProgrammizMetrics = await RawExecution.aggregate(pipeline3);
+  return res.json({
+    PrintCase: fillEmptyMonths(PrintCaseMetrics),
+    TestCases: fillEmptyMonths(TestCasesMetrics),
+    Programmiz: fillEmptyMonths(ProgrammizMetrics)
+  });
+})
+
+
+
 
 const DeleteAccount = asyncHandler(async (req, res) => {
   const user = req.user
@@ -404,6 +538,6 @@ const DeleteAccount = asyncHandler(async (req, res) => {
 
 
 export {
-  RegisterUser, LoginUser, LogoutUser, UpdatePoints, ChangeUserAvatar, UpdateProfile, UpdateUserCoordinates, getUsersNearYou, AvgExectionTimeMetrics, DeleteAccount, getUserBasicMetrics
+  RegisterUser, LoginUser, LogoutUser, UpdatePoints, ChangeUserAvatar, UpdateProfile, UpdateUserCoordinates, getUsersNearYou, getLeaderboard, AvgExectionTimeMetrics, exeMetrics, DeleteAccount, getUserBasicMetrics
 }
 // 192.168.18.26:29092 ip i want

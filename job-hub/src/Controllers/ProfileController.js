@@ -444,6 +444,7 @@ const reRunRecentPrints = asyncHandler(async (req, res) => {
       return res.send(new ApiResponse(402, null, tokenResult.message));
     }
     const tokenLength = tokenResult.tokenCount;
+    console.log("token length:", tokenLength)
   } catch (err) {
     console.error(err);
     return res.send(new ApiResponse(500, null, "Token validation failed"));
@@ -490,7 +491,7 @@ const DeletePrints = asyncHandler(async (req, res) => {
 
 const ProgrammizExecutions = asyncHandler(async (req, res) => {
   const user = req.user;
-  const programmizData = await RawExecution.find({ userId: user.id }).select("execution_time language status output createdAt _id")
+  const programmizData = await RawExecution.find({ userId: user.id }).select("execution_time language status output createdAt _id").limit(5)
   if (!programmizData) {
     throw new ApiError(400, null, 'user has no programmiz reuslts')
   }

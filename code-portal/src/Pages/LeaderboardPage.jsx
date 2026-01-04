@@ -1,185 +1,200 @@
-import React, { useEffect, useState } from "react";
-import axios from "axios";
-import {
-  Trophy,
-  Medal,
-  MapPin,
-  RefreshCw,
-  AlertCircle,
-  User
-} from "lucide-react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
+"use client"
 
-import useUserStore from "../ZustandStore/UserStore.js";
+import { useEffect, useState } from "react"
+import { Trophy, Medal, MapPin, RefreshCw, AlertCircle, User, ChevronRight, TrendingUp } from "lucide-react"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Button } from "@/components/ui/button"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Badge } from "@/components/ui/badge"
+import axios from "axios"
+
+// Mock store for demonstration
+const useUserStore = () => ({
+  currentUser: { _id: "6954229913d627b359af05be", fullname: "Rajan Dhamala" },
+})
 
 export default function LeaderboardPage() {
-  const { currentUser } = useUserStore(); // Ensure this matches your store key (CurrentUser vs currentUser)
-  const [users, setUsers] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const { currentUser } = useUserStore()
+  const [users, setUsers] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+  const [locationFilter, setLocationFilter] = useState("global") // "global" or "local"
 
   const fetchLeaderboard = async () => {
-    setLoading(true);
-    setError(null);
+    setLoading(true)
+    setError(null)
     try {
-      const response = await axios.get("http://localhost:8000/users/location", {
-        withCredentials: true,
-      });
+      const endpoint =
+        locationFilter === "global"
+          ? "http://localhost:8000/users/globalLeaderboard"
+          : "http://localhost:8000/users/location"
 
-      if (response.data && response.data.success) {
-        // Sort by points descending
-        const sortedUsers = response.data.data.sort((a, b) => b.points - a.points);
-        setUsers(sortedUsers);
-      } else {
-        setError("Failed to load leaderboard data.");
-      }
+      const response = await axios.get(endpoint, { withCredentials: true })
+      setUsers(response.data.data.sort((a, b) => b.points - a.points)) // sort top points
     } catch (err) {
-      console.error("Leaderboard fetch error:", err);
-      setError("Could not connect to the server.");
+      console.error(err)
+      setError("Could not connect to the server.")
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   useEffect(() => {
-    fetchLeaderboard();
-  }, []);
+    fetchLeaderboard()
+  }, [locationFilter])
 
-  const getRankIcon = (index) => {
-    if (index === 0) return <Trophy className="w-6 h-6 text-yellow-500 fill-yellow-500" />;
-    if (index === 1) return <Medal className="w-6 h-6 text-gray-400 fill-gray-400" />;
-    if (index === 2) return <Medal className="w-6 h-6 text-amber-600 fill-amber-600" />;
-    return <span className="text-lg font-bold text-gray-500 w-6 text-center">{index + 1}</span>;
-  };
-
-  const getRowStyle = (index) => {
-    if (index === 0) return "bg-yellow-50/50 dark:bg-yellow-900/10 border-yellow-200 dark:border-yellow-900/50";
-    if (index === 1) return "bg-gray-50/50 dark:bg-gray-800/30 border-gray-200 dark:border-gray-800";
-    if (index === 2) return "bg-amber-50/50 dark:bg-amber-900/10 border-amber-200 dark:border-amber-900/50";
-    return "bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800/50 border-transparent";
-  };
+  const getRankDisplay = (index) => {
+    if (index === 0) return <Trophy className="w-5 h-5 text-yellow-500" />
+    if (index === 1) return <Medal className="w-5 h-5 text-slate-400" />
+    if (index === 2) return <Medal className="w-5 h-5 text-amber-600" />
+    return <span className="text-sm font-bold text-muted-foreground w-5 text-center">{index + 1}</span>
+  }
 
   return (
-    <div className="w-full max-w-5xl mx-auto p-4 space-y-6">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-gray-100 flex items-center gap-3">
-            <MapPin className="h-8 w-8 text-blue-500" />
-            Local Leaderboard
-          </h1>
-          <p className="text-gray-500 dark:text-gray-400 mt-1">
-            Top performers in your geographical area.
-          </p>
-        </div>
-        <Button
-          variant="outline"
-          onClick={fetchLeaderboard}
-          disabled={loading}
-          className=" dark:border-gray-700 dark:text-gray-300"
-        >
-          <RefreshCw className={`w-4 h-4 mr-2 ${loading ? "animate-spin" : ""}`} />
-          Refresh
-        </Button>
-      </div>
-
-      {error && (
-        <Alert variant="destructive" className="bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800">
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
-      )}
-
-      <Card className="border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm overflow-hidden">
-        <CardHeader className="bg-gray-50/50 dark:bg-gray-900/50 border-b border-gray-100 dark:border-gray-800 pb-4">
-          <div className="flex justify-between items-center text-sm font-medium text-gray-500 dark:text-gray-400 px-2">
-            <span className="w-16">Rank</span>
-            <span className="flex-1 ml-4">User</span>
-            <span className="w-24 text-right">Points</span>
+    <div className="min-h-screen bg-background p-4 md:p-8 flex items-center justify-center font-sans">
+      <div className="w-full max-w-2xl space-y-6">
+        <header className="flex items-end justify-between px-2">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2 text-primary font-medium text-sm">
+              <MapPin className="h-4 w-4" />
+              <span>San Francisco, CA</span>
+            </div>
+            <h1 className="text-3xl font-bold tracking-tight text-foreground">Leaderboard</h1>
           </div>
-        </CardHeader>
-        <CardContent className="p-0">
-          {loading ? (
-            <div className="flex flex-col items-center justify-center py-12 space-y-4">
-              <RefreshCw className="w-8 h-8 text-blue-500 animate-spin" />
-              <p className="text-gray-500 dark:text-gray-400 animate-pulse">Finding nearby users...</p>
-            </div>
-          ) : users.length === 0 ? (
-            <div className="text-center py-12">
-              <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-gray-100 dark:bg-gray-800 mb-4">
-                <User className="h-6 w-6 text-gray-400" />
+          <div className="flex gap-2">
+            <Button
+              variant={locationFilter === "global" ? "default" : "ghost"}
+              size="sm"
+              onClick={() => setLocationFilter("global")}
+            >
+              Global
+            </Button>
+            <Button
+              variant={locationFilter === "local" ? "default" : "ghost"}
+              size="sm"
+              onClick={() => setLocationFilter("local")}
+            >
+              Nearby
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={fetchLeaderboard}
+              disabled={loading}
+              className="text-muted-foreground hover:text-foreground"
+            >
+              <RefreshCw className={`w-4 h-4 mr-2 ${loading ? "animate-spin" : ""}`} />
+              Sync
+            </Button>
+          </div>
+        </header>
+
+        {error && (
+          <Alert variant="destructive" className="rounded-xl border-none bg-destructive/10 text-destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
+
+        <Card className="border-none shadow-2xl shadow-primary/5 bg-card/50 backdrop-blur-xl rounded-[2rem] overflow-hidden">
+          <CardHeader className="pb-2 pt-8 px-8 flex flex-row items-center justify-between">
+            <CardTitle className="text-lg font-semibold flex items-center gap-2">
+              <TrendingUp className="h-5 w-5 text-primary" />
+              Top Performers
+            </CardTitle>
+            <Badge variant="secondary" className="bg-primary/10 text-primary border-none font-medium">
+              {locationFilter === "global" ? "Global" : "Nearby"}
+            </Badge>
+          </CardHeader>
+          <CardContent className="px-4 pb-8">
+            {loading ? (
+              <div className="flex flex-col items-center justify-center py-20 space-y-4">
+                <div className="relative">
+                  <div className="w-12 h-12 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
+                </div>
+                <p className="text-muted-foreground text-sm font-medium animate-pulse">Calculating rankings...</p>
               </div>
-              <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">No users found nearby</h3>
-              <p className="text-gray-500 dark:text-gray-400 mt-1 max-w-sm mx-auto">
-                Be the first to set your location and claim the top spot on the leaderboard!
-              </p>
-            </div>
-          ) : (
-            <div className="divide-y divide-gray-100 dark:divide-gray-800">
-              {users.map((user, index) => {
-                const isCurrentUser = currentUser && (currentUser._id === user._id || currentUser.id === user._id);
+            ) : users.length === 0 ? (
+              <div className="text-center py-20">
+                <div className="inline-flex items-center justify-center w-16 h-16 rounded-3xl bg-muted mb-4">
+                  <User className="h-8 w-8 text-muted-foreground" />
+                </div>
+                <h3 className="text-lg font-bold text-foreground">Empty Podium</h3>
+                <p className="text-muted-foreground text-sm mt-1">Start competing to show up here!</p>
+              </div>
+            ) : (
+              <div className="space-y-1 mt-4">
+                {users.map((user, index) => {
+                  const isCurrentUser = currentUser && currentUser._id === user._id
+                  const isTop3 = index < 3
 
-                return (
-                  <div
-                    key={user._id}
-                    className={`
-                      flex items-center justify-between p-4 transition-all duration-200 border-l-4
-                      ${getRowStyle(index)}
-                      ${isCurrentUser ? 'ring-2 ring-inset ring-green-500/50 dark:ring-green-400/50 bg-green-50/30 dark:bg-green-900/20' : ''}
-                    `}
-                  >
-                    <div className="flex items-center gap-4 flex-1">
-                      <div className="flex-shrink-0 w-8 flex justify-center">
-                        {getRankIcon(index)}
-                      </div>
+                  return (
+                    <div
+                      key={user._id}
+                      className={`
+                        group flex items-center justify-between p-3 rounded-2xl transition-all duration-300
+                        ${isCurrentUser ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20 scale-[1.02] z-10" : "hover:bg-accent/50"}
+                      `}
+                    >
+                      <div className="flex items-center gap-4 flex-1">
+                        <div className="w-10 flex justify-center flex-shrink-0">{getRankDisplay(index)}</div>
 
-                      <div className="flex items-center gap-3">
-                        <Avatar className={`
-                          w-10 h-10 border-2 
-                          ${index === 0 ? "border-yellow-400" : index === 1 ? "border-gray-300" : index === 2 ? "border-amber-600" : "border-transparent"}
-                        `}>
-                          <AvatarImage src={user.avatar} alt={user.fullname} />
-                          <AvatarFallback className="bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300">
-                            {user.fullname.slice(0, 2).toUpperCase()}
-                          </AvatarFallback>
-                        </Avatar>
-
-                        <div className="flex flex-col">
-                          <div className="flex items-center gap-2">
-                            <span className={`font-semibold ${index < 3 ? 'text-gray-900 dark:text-white' : 'text-gray-700 dark:text-gray-300'}`}>
-                              {user.fullname}
-                            </span>
-                            {isCurrentUser && (
-                              <Badge className="h-5 px-1.5 text-[10px] bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900/30 dark:text-green-400 border-green-200 dark:border-green-800 pointer-events-none">
-                                YOU
-                              </Badge>
+                        <div className="flex items-center gap-3">
+                          <div className="relative">
+                            <Avatar
+                              className={`
+                              h-10 w-10 border-2 transition-transform duration-300 group-hover:scale-105
+                              ${isCurrentUser ? "border-primary-foreground/30" : "border-background"}
+                            `}
+                            >
+                              <AvatarImage src={user.avatar || "/placeholder.svg"} alt={user.fullname} />
+                              <AvatarFallback className={isCurrentUser ? "bg-primary-foreground/10" : ""}>
+                                {user.fullname.slice(0, 2).toUpperCase()}
+                              </AvatarFallback>
+                            </Avatar>
+                            {isTop3 && !isCurrentUser && (
+                              <div
+                                className={`absolute -top-1 -right-1 w-4 h-4 rounded-full border-2 border-background flex items-center justify-center
+                                    ${index === 0 ? "bg-yellow-500" : index === 1 ? "bg-slate-400" : "bg-amber-600"}`}
+                              ></div>
                             )}
                           </div>
 
-                          {index === 0 && (
-                            <span className="text-xs text-yellow-600 dark:text-yellow-400 font-medium">
-                              Current Leader
+                          <div className="flex flex-col">
+                            <span
+                              className={`font-bold text-sm tracking-tight ${isCurrentUser ? "text-primary-foreground" : "text-foreground"}`}
+                            >
+                              {user.fullname}
                             </span>
-                          )}
+                            <span className={`text-[10px] font-medium uppercase tracking-wider opacity-60`}>
+                              {index === 0 ? "Legendary" : index === 1 ? "Elite" : index === 2 ? "Pro" : "Challenger"}
+                            </span>
+                          </div>
                         </div>
                       </div>
-                    </div>
 
-                    <div className="flex items-center gap-2">
-                      <Badge variant="secondary" className="px-3 py-1 bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 border-none text-sm font-mono">
-                        {user.points.toLocaleString()} pts
-                      </Badge>
+                      <div className="flex items-center gap-4">
+                        <div className="text-right">
+                          <div
+                            className={`text-sm font-black ${isCurrentUser ? "text-primary-foreground" : "text-primary"}`}
+                          >
+                            {user.points.toLocaleString()}
+                          </div>
+                          <div className={`text-[10px] font-bold opacity-50 uppercase`}>Points</div>
+                        </div>
+                        <ChevronRight
+                          className={`w-4 h-4 opacity-0 -translate-x-2 transition-all duration-300 group-hover:opacity-100 group-hover:translate-x-0 ${isCurrentUser ? "text-primary-foreground" : "text-muted-foreground"}`}
+                        />
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                  )
+                })}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
     </div>
-  );
+  )
 }
