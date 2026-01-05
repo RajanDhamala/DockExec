@@ -1,0 +1,18 @@
+# npm
+.env
+node_modules
+package-lock.json
+npm-shrinkwrap.json
+*.log
+*.gz
+
+# Yarn
+yarn-error.log
+yarn.lock
+
+# Coveralls
+.nyc_output
+coverage
+
+# Benchmarking
+benchmarks/graphs
