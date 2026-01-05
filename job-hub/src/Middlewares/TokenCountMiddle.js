@@ -1,7 +1,7 @@
 import { encoding_for_model } from "tiktoken";
 import { RedisClient } from "../Utils/RedisClient.js";
 import TokenQuota from "../Schemas/TokenQuotaSchema.js";
-
+import { getRabbit } from "../Utils/ConnectRabbit.js";
 const countTokens = (text) => {
   try {
     const enc = encoding_for_model("gpt-3.5-turbo");
@@ -32,8 +32,8 @@ const countTokenMiddle = async (req, res, next) => {
       await RedisClient.hSet(key, {
         monthlyLimit: dbData.monthlyLimit.toString(),
         tokenUsed: dbData.tokenUsed.toString(),
-        cycleEndsAt:dbData.cycleEndsAt.toString(),
-        cycleStartsAt:dbData.cycleStartsAt.toString()
+        cycleEndsAt: dbData.cycleEndsAt.toString(),
+        cycleStartsAt: dbData.cycleStartsAt.toString()
       });
       await RedisClient.expire(key, 30 * 24 * 60 * 60);
 
@@ -51,7 +51,8 @@ const countTokenMiddle = async (req, res, next) => {
         : JSON.stringify(req.body);
       requestTokens = countTokens(text);
     }
-
+    console.log("token used:", tokenUsed)
+    console.log("monthlyLimit:", monthlyLimit)
     if (tokenUsed + requestTokens > monthlyLimit) {
       return res.status(429).json({
         message: "Token limit exceeded",
@@ -60,8 +61,16 @@ const countTokenMiddle = async (req, res, next) => {
       });
     }
 
-    await RedisClient.hIncrBy(key, "tokenUsed", requestTokens);
-
+    const newTokenUsed = await RedisClient?.hIncrBy(key, "tokenUsed", requestTokens);
+    const objectSchema = {
+      userId: req.user.id,
+      tokenConsumed: requestTokens,
+      endpoint: req.route.path,
+    }
+    const RabbitClient = await getRabbit()
+    await RabbitClient.sendToQueue("logQueue", Buffer.from(JSON.stringify(objectSchema)), { persistent: true });
+    console.log("rabbit message pushed")
+    await RedisClient.sAdd("dirty_users", req.user.id); // mark user as updated
     req.tokenData = { monthlyLimit, tokenUsed: tokenUsed + requestTokens };
     req.tokenCount = requestTokens;
 

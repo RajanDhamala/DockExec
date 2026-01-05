@@ -1,8 +1,8 @@
 import amqplib from "amqplib";
 import ConnectDb from "./src/Utils/ConnectDB.js"
 import dotenv from "dotenv"
-import { LogBulkToken, FlushBuffer } from "./src/Utils/LogTokenLogs.js";
-
+import { LogBulkToken, FlushBuffer, getActiveUsers } from "./src/Utils/LogTokenLogs.js";
+import { connectRedis } from "./src/Utils/ConnectRedis.js";
 
 dotenv.config({})
 
@@ -10,7 +10,9 @@ const consumeJobs = async () => {
   try {
 
     await ConnectDb()
+    await connectRedis()
     setInterval(FlushBuffer, 150000)
+    setInterval(getActiveUsers, 10000)
     const conn = await amqplib.connect("amqp://guest:guest@localhost:5672");
     const channel = await conn.createChannel();
 
