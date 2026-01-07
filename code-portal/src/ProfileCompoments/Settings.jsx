@@ -423,7 +423,6 @@ export default function SettingsPage() {
           <TabsTrigger value="profile" className="data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 dark:text-slate-300 dark:data-[state=active]:text-white">Profile</TabsTrigger>
           <TabsTrigger value="notifications" className="data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 dark:text-slate-300 dark:data-[state=active]:text-white">Notifications</TabsTrigger>
           <TabsTrigger value="security" className="data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 dark:text-slate-300 dark:data-[state=active]:text-white">Security</TabsTrigger>
-          <TabsTrigger value="billing" className="data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 dark:text-slate-300 dark:data-[state=active]:text-white">Billing</TabsTrigger>
           <TabsTrigger value="preferences" className="data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 dark:text-slate-300 dark:data-[state=active]:text-white">Preferences</TabsTrigger>
         </TabsList>
 
@@ -794,71 +793,6 @@ export default function SettingsPage() {
                     <Badge variant="secondary" className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 border border-green-200 dark:border-green-900/50">
                       Current
                     </Badge>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="billing" className="space-y-6">
-          <Card className="bg-white dark:bg-gray-900 border-gray-200 dark:border-slate-700 shadow-sm">
-            <CardHeader>
-              <CardTitle className="text-gray-900 dark:text-white">Billing & Subscription</CardTitle>
-              <CardDescription className="text-gray-500 dark:text-slate-400">Manage your subscription and billing information</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="space-y-4">
-                <h3 className="font-medium text-gray-900 dark:text-white">Current Plan</h3>
-                <div className="p-4 border border-gray-200 dark:border-slate-700 rounded-lg bg-gray-50 dark:bg-gray-800/50">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="font-medium text-lg text-gray-900 dark:text-white">Free Plan</div>
-                    <Badge variant="secondary" className="bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
-                      Active
-                    </Badge>
-                  </div>
-                  <div className="text-sm text-gray-600 dark:text-slate-400 mb-4">
-                    Free 30$ credit per month • resets monthly •
-                  </div>
-                  <div className="flex gap-2">
-                    <Button variant="outline" size="sm" className="border-gray-300 dark:border-slate-600 text-gray-700 dark:text-slate-300">
-                      View Usage
-                    </Button>
-                    <Button variant="outline" size="sm" className="border-gray-300 dark:border-slate-600 text-gray-700 dark:text-slate-300" onClick={() => toast.error("available soon")}>
-                      Request more
-                    </Button>
-                  </div>
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                <h3 className="font-medium text-gray-900 dark:text-white">Pro Plan</h3>
-                <div className="p-4 border border-gray-200 dark:border-slate-700 rounded-lg bg-gray-50 dark:bg-gray-800/50">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="font-medium text-lg text-gray-900 dark:text-white">Pro Plan</div>
-                    {/* Changed purple badge to blue for consistency or kept if specific branding */}
-                    <Badge variant="secondary" className="bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
-                      Upgrade
-                    </Badge>
-                  </div>
-                  <div className="text-sm text-gray-600 dark:text-slate-400 mb-4">
-                    $8/month • Billed monthly • Unlimited token limit
-                  </div>
-                  <div className="flex gap-2">
-                    <Button variant="outline" size="sm" className="border-gray-300 dark:border-slate-600 text-gray-700 dark:text-slate-300">
-                      Get Now
-                    </Button>
-                  </div>
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                <h3 className="font-medium text-gray-900 dark:text-white">Billing History</h3>
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between p-3 border border-gray-200 dark:border-slate-700 rounded-lg">
-                    <div>
-                      <div className="text-sm text-gray-600 dark:text-slate-400">No payments History</div>
-                    </div>
                   </div>
                 </div>
               </div>

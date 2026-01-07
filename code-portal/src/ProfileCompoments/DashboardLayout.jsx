@@ -12,7 +12,8 @@ import {
   Bell,
   ArrowRight,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  DollarSign
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -31,6 +32,7 @@ const navigation = [
   { name: "Overview", href: "/overview", icon: Home },
   { name: "Workflows", href: "/workflows", icon: Workflow },
   { name: "Settings", href: "/settings", icon: Settings },
+  { name: "Billing", href: "/bills", icon: DollarSign },
 ];
 
 export function DashboardLayout() {

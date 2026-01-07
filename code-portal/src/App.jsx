@@ -1,7 +1,7 @@
 
 import { Suspense } from "react";
 import "./index.css";
-import { LazyLandingPage, LazySettingsPage, LazyProfilePage, LazyLoginPage, LazyWritePage, LazyLeetCode, LazyTestPage } from "./LazyLoading/LazyLoading";
+import { LazyLandingPage, LazySettingsPage, LazyProfilePage, LazyLoginPage, LazyWritePage, LazyLeetCode, LazyTestPage, LazyBillingPage } from "./LazyLoading/LazyLoading";
 import { BrowserRouter as Router, Routes, Route, } from "react-router-dom";
 import { QueryClientProvider } from "@tanstack/react-query";
 import queryClient from "./Utils/QueryConfig.jsx";
@@ -19,6 +19,8 @@ import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { DashboardLayout } from "./ProfileCompoments/DashboardLayout";
 import LocationPage from "./ProfileCompoments/LocationPage.jsx"
 import LeaderboardPage from "./Pages/LeaderboardPage";
+import TokenUsageGraph from "./Pages/TokenUsageGraph";
+
 
 function App() {
   const { initSocket, socket, isConnected } = useSocketStore();
@@ -66,13 +68,14 @@ function App() {
 
             <Route path="/leaderboard" element={<LeaderboardPage />} />
 
-
-
+            <Route path="/tokenGraph" element={<TokenUsageGraph />} />
             {/* test routes (WITH dashboard layout) */}
             <Route element={<DashboardLayout />}>
               <Route path="/overview" element={<Overview />} />
               <Route path="workflows" element={<WorkflowPage />} />
               <Route path="/settings" element={<SettingsPage />} />
+
+              <Route path="/bills" element={<LazyBillingPage />} />
             </Route>
 
             <Route path="*" element={<PageNotFound />} />

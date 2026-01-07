@@ -85,7 +85,7 @@ func main() {
     }
 }`
   };
-  
+
   return templates[language] || templates.python;
 };
 
@@ -93,7 +93,7 @@ export default function WriteCode() {
   const [code, setCode] = useState(getBoilerplateCode("python"));
   const [language, setLanguage] = useState("python");
   const [lines, setLines] = useState([]);
-  const [duration, setDuration] = useState(null); 
+  const [duration, setDuration] = useState(null);
 
   const { socket, initSocket, isConnected, clientId } = useSocketStore();
   const consoleRef = useRef(null);
@@ -163,7 +163,7 @@ export default function WriteCode() {
 
     socket.on("programmiz_result", handleTestResult);
     socket.on("blocked_result", handleBlockedResult);
-    
+
     return () => {
       socket.off("programmiz_result", handleTestResult);
       socket.off("blocked_result", handleBlockedResult);
@@ -187,6 +187,7 @@ export default function WriteCode() {
       );
       return res.data;
     },
+    retry: false,
     onSuccess: () => {
       toast.success(" Code submitted! Waiting for result...");
       setLines([]);
@@ -221,22 +222,22 @@ export default function WriteCode() {
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Language Selector */}
             <div className="space-y-2">
-            
+
 
               <div className="flex space-x-5">
-  <Label className="text-sm font-medium text-gray-300 flex items-center gap-2">
-                <Terminal className="w-4 h-4" />
-                Programming Language
-              </Label>
-                     <div className="flex items-center gap-3">
-              <CardDescription className="text-gray-400">
-                {isConnected ? (
-                  <span className="text-green-400">🟢 Connected</span>
-                ) : (
-                  <span className="text-red-400">🔴 Disconnected</span>
-                )}
-              </CardDescription>
-          </div>    
+                <Label className="text-sm font-medium text-gray-300 flex items-center gap-2">
+                  <Terminal className="w-4 h-4" />
+                  Programming Language
+                </Label>
+                <div className="flex items-center gap-3">
+                  <CardDescription className="text-gray-400">
+                    {isConnected ? (
+                      <span className="text-green-400">🟢 Connected</span>
+                    ) : (
+                      <span className="text-red-400">🔴 Disconnected</span>
+                    )}
+                  </CardDescription>
+                </div>
               </div>
 
 
@@ -283,40 +284,40 @@ export default function WriteCode() {
             </div>
 
             {/* Console Output */}
-           <div
-  className="mt-4 border border-gray-700 rounded-lg bg-gray-800/70 text-gray-100 font-mono text-sm p-3 h-60 overflow-y-auto whitespace-pre-wrap"
-  ref={consoleRef}
->
-  {/* 1. Idle / just-loaded / after reset */}
-  {lines.length === 0 && !mutation.isPending && !mutation.isSuccess && (
-    <p className="text-gray-600">Press **Run Code** to see the output.</p>
-  )}
+            <div
+              className="mt-4 border border-gray-700 rounded-lg bg-gray-800/70 text-gray-100 font-mono text-sm p-3 h-60 overflow-y-auto whitespace-pre-wrap"
+              ref={consoleRef}
+            >
+              {/* 1. Idle / just-loaded / after reset */}
+              {lines.length === 0 && !mutation.isPending && !mutation.isSuccess && (
+                <p className="text-gray-600">Press **Run Code** to see the output.</p>
+              )}
 
-  {/* 2. Waiting for the backend (after submit) */}
-  {mutation.isPending && (
-    <p className="text-gray-500 animate-pulse">
-      Waiting for output...
-    </p>
-  )}
+              {/* 2. Waiting for the backend (after submit) */}
+              {mutation.isPending && (
+                <p className="text-gray-500 animate-pulse">
+                  Waiting for output...
+                </p>
+              )}
 
-  {/* 3. Real output (success / error / blocked) */}
-  {lines.length > 0 && (
-    <>
-      {lines.map((line, i) => (
-        <div key={i} className="leading-5">
-          {line}
-        </div>
-      ))}
+              {/* 3. Real output (success / error / blocked) */}
+              {lines.length > 0 && (
+                <>
+                  {lines.map((line, i) => (
+                    <div key={i} className="leading-5">
+                      {line}
+                    </div>
+                  ))}
 
-      {duration && (
-        <div className="mt-2 text-xs text-green-400 border-t border-gray-700 pt-2 flex items-center gap-1">
-          <Timer className="w-4 h-4" />
-          Executed in {duration}s
-        </div>
-      )}
-    </>
-  )}
-</div>
+                  {duration && (
+                    <div className="mt-2 text-xs text-green-400 border-t border-gray-700 pt-2 flex items-center gap-1">
+                      <Timer className="w-4 h-4" />
+                      Executed in {duration}s
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
 
             {/* Buttons */}
             <div className="flex gap-3">

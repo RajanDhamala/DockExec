@@ -9,3 +9,6 @@ export const LazyWritePage = lazy(() => import("../Pages/WriteCode.jsx"))
 export const LazyLeetCode = lazy(() => import("../Pages/LeetCode.jsx"))
 export const LazySettingsPage = lazy(() => import("../Pages/SettingsPage.jsx"))
 export const LazyProfilePage = lazy(() => import("../Pages/ProfilePage.jsx"))
+export const LazyBillingPage = lazy(() => import("../Pages/BillingPage.jsx"))
+
+
