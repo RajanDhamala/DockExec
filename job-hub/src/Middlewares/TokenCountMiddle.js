@@ -66,6 +66,7 @@ const countTokenMiddle = async (req, res, next) => {
       userId: req.user.id,
       tokenConsumed: requestTokens,
       endpoint: req.route.path,
+      createdAt: new Date()
     }
     const RabbitClient = await getRabbit()
     await RabbitClient.sendToQueue("logQueue", Buffer.from(JSON.stringify(objectSchema)), { persistent: true });

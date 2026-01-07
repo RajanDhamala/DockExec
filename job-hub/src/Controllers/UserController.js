@@ -1,4 +1,6 @@
 import asyncHandler from "../Utils/AsyncHandler.js"
+import LeaderBoard from "../Schemas/LeaderBoardSchema.js"
+import { RedisClient } from "../Utils/RedisClient.js"
 import mongoose from "mongoose"
 import ApiError from "../Utils/ApiError.js"
 import ApiResponse from "../Utils/ApiResponse.js"
@@ -206,6 +208,49 @@ const UpdateUserCoordinates = asyncHandler(async (req, res) => {
 });
 
 
+
+const GeturPoints = asyncHandler(async (req, res) => {
+  const user = req.user;
+
+  const userDoc = await UserModel.findById(user.id).select("points");
+  const userPoints = userDoc?.points || 0;
+
+  let statsStr = await RedisClient.get("leaderboardStats");
+  let stats;
+
+  if (statsStr) {
+    stats = JSON.parse(statsStr);
+  } else {
+    stats = await LeaderBoard.findOne({}).sort({ createdAt: -1 }).lean();
+    if (!stats) return res.status(500).send({ message: "Leaderboard not ready" });
+
+    console.log("DB stats:", stats);
+
+    await RedisClient.set("leaderboardStats", JSON.stringify(stats));
+  }
+
+  const { pointsHistogram, totalUsers } = stats;
+
+  let usersBelow = 0;
+  for (const bucket of pointsHistogram) {
+    if (userPoints > bucket.max) {
+      usersBelow += bucket.count;
+    } else if (userPoints >= bucket.min && userPoints <= bucket.max) {
+      const bucketRange = bucket.max - bucket.min + 1;
+      const pointsInBucket = userPoints - bucket.min;
+      const proportion = pointsInBucket / bucketRange;
+      usersBelow += bucket.count * proportion;
+      break;
+    } else {
+      break;
+    }
+  }
+
+  const percentile = (usersBelow / totalUsers) * 100;
+
+  return res.send(new ApiResponse(200, "Successfully fetched user percentile", { topPercentile: Math.round(percentile * 100) / 100 }));
+});
+
 const getUsersNearYou = asyncHandler(async (req, res) => {
   const user = req.user;
   const maxDistance = 5000; // 5 km
@@ -249,9 +294,9 @@ const getUsersNearYou = asyncHandler(async (req, res) => {
 
 const getLeaderboard = asyncHandler(async (req, res) => {
   const topUsers = await UserModel.aggregate([
-    { $sort: { points: -1 } },   // sort by points descending
-    { $limit: 10 },              // top 10 users
-    { $project: { name: 1, points: 1, avatar: 1, fullname: 1 } } // optional: only return name + points
+    { $sort: { points: -1 } },
+    { $limit: 10 },
+    { $project: { name: 1, points: 1, avatar: 1, fullname: 1 } }
   ]);
   return res.json({
     "data": topUsers
@@ -538,6 +583,6 @@ const DeleteAccount = asyncHandler(async (req, res) => {
 
 
 export {
-  RegisterUser, LoginUser, LogoutUser, UpdatePoints, ChangeUserAvatar, UpdateProfile, UpdateUserCoordinates, getUsersNearYou, getLeaderboard, AvgExectionTimeMetrics, exeMetrics, DeleteAccount, getUserBasicMetrics
+  RegisterUser, LoginUser, LogoutUser, UpdatePoints, ChangeUserAvatar, UpdateProfile, UpdateUserCoordinates, GeturPoints, getUsersNearYou, getLeaderboard, AvgExectionTimeMetrics, exeMetrics, DeleteAccount, getUserBasicMetrics
 }
 // 192.168.18.26:29092 ip i want

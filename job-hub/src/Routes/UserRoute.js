@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { LoginUser, RegisterUser, LogoutUser, UpdatePoints, ChangeUserAvatar, UpdateProfile, UpdateUserCoordinates, getLeaderboard, getUsersNearYou, getUserBasicMetrics, AvgExectionTimeMetrics, exeMetrics, DeleteAccount } from "../Controllers/UserController.js"
+import { LoginUser, RegisterUser, LogoutUser, UpdatePoints, ChangeUserAvatar, UpdateProfile, UpdateUserCoordinates, GeturPoints, getLeaderboard, getUsersNearYou, getUserBasicMetrics, AvgExectionTimeMetrics, exeMetrics, DeleteAccount } from "../Controllers/UserController.js"
 import AuthUser from "../Middlewares/AuthMiddelware.js"
 import Whoareu from "../Middlewares/MeMiddle.js";
 import avatarUpload from "../Middlewares/AvatarUpload.js"
@@ -17,6 +17,7 @@ UserRouter.get("/points/:problemId/:userId", UpdatePoints)
 UserRouter.get("/me", Whoareu)
 UserRouter.post("/upCoordinates", AuthUser, UpdateUserCoordinates)
 UserRouter.get("/location", AuthUser, getUsersNearYou)
+UserRouter.get("/percentile", AuthUser, GeturPoints)
 UserRouter.get("/globalLeaderboard", getLeaderboard)
 UserRouter.get("/Basicmetrics/:days", AuthUser, getUserBasicMetrics)
 UserRouter.get("/exeTime/:language/:problemId", AuthUser, AvgExectionTimeMetrics)

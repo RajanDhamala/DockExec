@@ -16,6 +16,7 @@ import client from "prom-client";
 import dotenv from "dotenv"
 import { loginOrLinkUser } from "./src/Utils/OuthUtils.js";
 import NotificationRouter from "./src/Routes/NotificationRoute.js"
+import { ConnectRabbit } from "./src/Utils/ConnectRabbit.js"
 
 dotenv.config()
 
@@ -53,7 +54,6 @@ const onError = async (req, res, error) => {
   return res.redirect(`${process.env.FRONTEND_URI}auth/error`);
 };
 
-
 GithubProvider(
   app,
   process.env.GITHUB_CLIENT_ID,
@@ -72,6 +72,7 @@ GoogleProvider(
   onError
 );
 await connectRedis();
+await ConnectRabbit()
 //
 // (async () => {
 //   try {
@@ -143,8 +144,6 @@ await connectRedis();
 //     console.error(" Kafka initialization failed:", err);
 //   }
 // })();
-//
-
 
 
 app.get("/", (req, res) => {
@@ -162,4 +161,4 @@ app.use("/profile", ProfileRouter)
 app.use("/notification", NotificationRouter)
 app.use("/token", TokenRouter)
 
-export default app;
+export default app
