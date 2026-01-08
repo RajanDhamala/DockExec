@@ -14,7 +14,10 @@ import { v4 as uuidv4 } from 'uuid';
 import { RedisClient } from "../Utils/RedisClient.js"
 import Problem from "../Schemas/CodeSchema.js"
 import { hashPassword, verifyPassword } from "../Utils/Authutils.js"
-// inside your middleware
+import { getRabbit } from "../Utils/ConnectRabbit.js";
+
+
+const RabbitClient = getRabbit()
 
 const GetProfile = asyncHandler(async (req, res) => {
   const user = req.user;
@@ -202,24 +205,27 @@ const reRunRecentExecutions = asyncHandler(async (req, res) => {
   const testCaseToSend = problemData.testCases;
   const submissionsKey = `submissions:${req.user.id}:${problemData._id}`;
   await RedisClient.del(submissionsKey);
-  await producer.send({
-    topic: "all_cases_submission",
-    messages: [{
-      value: JSON.stringify({
-        code,
-        language,
-        id: uuid,
-        testCase: testCaseToSend,
-        socketId,
-        userId: req.user.id,
-        problemId: problemData._id,
-        function_name: problemData.function_name,
-        parameters: problemData.parameters,
-        wrapper_type: problemData.wrapper_type
-      })
-    }]
 
-  });
+  const message = {
+    code,
+    language,
+    id: uuid,
+    testCase: testCaseToSend,
+    socketId,
+    userId: req.user.id,
+    problemId: problemData._id,
+    function_name: problemData.function_name,
+    parameters: problemData.parameters,
+    wrapper_type: problemData.wrapper_type
+  };
+
+  await RabbitClient.publish(
+    "code_exchange",
+    "all_cases_submission",
+    Buffer.from(JSON.stringify(message)),
+    { persistent: true }
+  );
+
   console.log("code produced for running")
   return res.send(new ApiResponse(200, "successfully executed oldSubmission", uuid))
 })
@@ -538,15 +544,20 @@ const reRunPorgrammiz = asyncHandler(async (req, res) => {
 
   const uuid = uuidv4()
   try {
-    await producer.send({
-      topic: "programiz_submission",
-      messages: [
-        {
-          userId: user.id,
-          value: JSON.stringify({ code, language, "id": uuid, "socketId": socketId, "userId": req.user.id }),
-        },
-      ],
-    });
+    const message = {
+      code,
+      language,
+      id: uuid,
+      socketId,
+      userId: req.user.id
+    };
+
+    await RabbitClient.publish(
+      "code_exchange",
+      "programiz_submission",
+      Buffer.from(JSON.stringify(message)),
+      { persistent: true }
+    );
     console.log("Job produced successfully");
     await RedisClient.set(`exec:${uuid}`, JSON.stringify({ code, language, id: uuid, socketId, userId: user.id }),
       { EX: 120 }

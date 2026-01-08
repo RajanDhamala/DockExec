@@ -8,7 +8,10 @@ import { RedisClient } from "../Utils/RedisClient.js"
 import TestCase from "../Schemas/TestCaseSchema.js";
 import UserCodeDraft from "../Schemas/UserCodeDraft.js";
 import pushrecentactivity from "../Utils/UtilsRecentActivity.js"
+import { getRabbit, RabbitChannel } from "../Utils/ConnectRabbit.js";
 
+
+const RabbitClient = getRabbit()
 const getList = asyncHandler(async (req, res) => {
   const listKey = "getList";
   try {
@@ -57,8 +60,8 @@ const GetData = asyncHandler(async (req, res) => {
 
 const TestPrintCode = asyncHandler(async (req, res) => {
   const { code, language, problemId, socketId } = req.body;
-  const {count}=req.tokenCount
-  console.log("father token count:",count)
+  const { count } = req.tokenCount
+  console.log("father token count:", count)
   const uuid = uuidv4();
   console.log(req.body)
 
@@ -89,24 +92,25 @@ const TestPrintCode = asyncHandler(async (req, res) => {
   // Produce execution job
   const testCaseToSend = problemData.testCases[0]
 
-  await producer.send({
-    topic: "print_test_submission",
-    messages: [{
-      value: JSON.stringify({
-        code,
-        language,
-        id: uuid,
-        testCase: testCaseToSend,
-        socketId,
-        userId: req.user.id,
-        problemId: problemData._id,
-        function_name: problemData.function_name,
-        parameters: problemData.parameters,
-        wrapper_type: problemData.wrapper_type
-      })
-    }]
-
-  });
+  const message = {
+    code,
+    language,
+    id: uuid,
+    testCase: testCaseToSend,
+    socketId,
+    userId: req.user.id,
+    problemId: problemData._id,
+    function_name: problemData.function_name,
+    parameters: problemData.parameters,
+    wrapper_type: problemData.wrapper_type
+  };
+  let meclient = getRabbit()
+  await RabbitChannel.publish(
+    "code_exchange",
+    "print_test_submission",
+    Buffer.from(JSON.stringify(message)),
+    { persistent: true }
+  );
   console.log("code produced for running")
 
   return res.send(new ApiResponse(200, 'code sent for running', { uuid, problemData }));
@@ -145,25 +149,27 @@ const AllTestCases = asyncHandler(async (req, res) => {
   const testCaseToSend = problemData.testCases;
   const submissionsKey = `submissions:${req.user.id}:${problemData._id}`;
   await RedisClient.del(submissionsKey);
-  await producer.send({
-    topic: "all_cases_submission",
-    messages: [{
 
-      value: JSON.stringify({
-        code,
-        language,
-        id: uuid,
-        testCase: testCaseToSend,
-        socketId,
-        userId: req.user.id,
-        problemId: problemData._id,
-        function_name: problemData.function_name,
-        parameters: problemData.parameters,
-        wrapper_type: problemData.wrapper_type
-      })
-    }]
+  const message = {
+    code,
+    language,
+    id: uuid,
+    testCase: testCaseToSend,
+    socketId,
+    userId: req.user.id,
+    problemId: problemData._id,
+    function_name: problemData.function_name,
+    parameters: problemData.parameters,
+    wrapper_type: problemData.wrapper_type
+  };
 
-  });
+  await RabbitChannel.publish(
+    "code_exchange",
+    "all_cases_submission",
+    Buffer.from(JSON.stringify(message)),
+    { persistent: true }
+  );
+
   console.log("code produced for running")
   return res.send(new ApiResponse(200, 'code sent for running', uuid));
 });
@@ -188,7 +194,7 @@ const GetSubmissons = asyncHandler(async (req, res) => {
   } catch (Err) {
     console.log("data not found on redis btw")
   }
-  submissions = await TestCase.find({ "userId":userId, problemId }).sort({ createdAt: -1 }).limit(10).select("problemId language createdAt totalTestCases status passedNo");
+  submissions = await TestCase.find({ "userId": userId, problemId }).sort({ createdAt: -1 }).limit(10).select("problemId language createdAt totalTestCases status passedNo");
   await RedisClient.set(submissionsKey, JSON.stringify(submissions), { EX: 120 });
 
 

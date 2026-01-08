@@ -6,18 +6,18 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"os"
 	"os/exec"
 	"strings"
 	"time"
 
-	"go-exec/internal/routes"
-
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"github.com/segmentio/kafka-go"
+	amqp "github.com/rabbitmq/amqp091-go"
+	"go-exec/internal/routes"
 )
 
 type ProgrammizRequest struct {
@@ -125,15 +125,18 @@ func main() {
 		port = "8080"
 	}
 
-	broker := os.Getenv("KAFKA_BROKER")
-	if broker == "" {
-		broker = "192.168.18.26:29092"
+	const RabbitURL = "amqp://guest:guest@localhost:5672"
+	const ExchangeName = "code_exchange"
+
+	conn, err := amqp.Dial(RabbitURL)
+	if err != nil {
+		log.Fatal(err)
 	}
 
-	// Start both Kafka consumers
-	go consume_Programmiz_Case(broker) // Original consumer
-	go consume_OneTest_Case(broker)    // New test case consumer - UPDATED NAME
-	go consume_AllTest_Case(broker)    // Runs code without test cases
+	// Start triple raabbit consumers
+	go consume_Programmiz_Case(conn) // Original consumer
+	go consume_OneTest_Case(conn)    // New test case consumer
+	go consume_AllTest_Case(conn)    // Runs code without test cases
 	// HTTP server
 
 	// Gin server
@@ -154,41 +157,98 @@ func main() {
 	r.Run("0.0.0.0:" + port)
 }
 
-func consume_OneTest_Case(broker string) {
-	reader := kafka.NewReader(kafka.ReaderConfig{
-		Brokers: []string{broker},
-		Topic:   "print_test_execution",
-		GroupID: "multi-lang-executor",
-	})
-	defer reader.Close()
+func setupConsumerChannel(
+	conn *amqp.Connection,
+	queue string,
+	routingKey string,
+) (*amqp.Channel, <-chan amqp.Delivery) {
+	ch, err := conn.Channel()
+	if err != nil {
+		log.Fatal("Channel open failed:", err)
+	}
 
-	writer := kafka.NewWriter(kafka.WriterConfig{
-		Brokers: []string{broker},
-		Topic:   "print_test_result",
-	})
-	defer writer.Close()
+	err = ch.ExchangeDeclare(
+		"code_exchange",
+		"topic",
+		true,
+		false,
+		false,
+		false,
+		nil,
+	)
+	if err != nil {
+		log.Fatal("Exchange declare failed:", err)
+	}
+
+	_, err = ch.QueueDeclare(
+		queue,
+		true,
+		false,
+		false,
+		false,
+		nil,
+	)
+	if err != nil {
+		log.Fatal("Queue declare failed:", err)
+	}
+
+	err = ch.QueueBind(
+		queue,
+		routingKey,
+		"code_exchange",
+		false,
+		nil,
+	)
+	if err != nil {
+		log.Fatal("Queue bind failed:", err)
+	}
+
+	err = ch.Qos(1, 0, false)
+	if err != nil {
+		log.Fatal("QoS failed:", err)
+	}
+
+	msgs, err := ch.Consume(
+		queue,
+		"",
+		false,
+		false,
+		false,
+		false,
+		nil,
+	)
+	if err != nil {
+		log.Fatal("Consume register failed:", err)
+	}
+
+	return ch, msgs
+}
+
+func consume_OneTest_Case(conn *amqp.Connection) {
+	ch, msgs := setupConsumerChannel(
+		conn,
+		"print_test_execution", 
+		"print_test_execution",
+	)
+	defer ch.Close()
+
+	exchange := "code_exchange"
+	resultRoutingKey := "print_test_result"
 
 	fmt.Println(" Listening for jobs on 'print_test_execution'...")
 
-	for {
-		msg, err := reader.ReadMessage(context.Background())
-		if err != nil {
-			fmt.Println("️ Kafka read error:", err)
-			time.Sleep(2 * time.Second)
+	for msg := range msgs {
+		var job SingleTestCaseRequest
+		if err := json.Unmarshal(msg.Body, &job); err != nil {
+			fmt.Println(" Invalid job JSON:", err)
+			msg.Nack(false, false)
 			continue
 		}
 
-		job := SingleTestCaseRequest{}
-		if err := json.Unmarshal(msg.Value, &job); err != nil {
-			fmt.Println("️ Invalid job JSON:", err)
-			continue
-		}
-
-		fmt.Printf("️ Executing %s job %s...\n", job.Language, job.JobID)
+		fmt.Println("Received job:", job.JobID, "problem:", job.ProblemId)
+		fmt.Printf(" Executing %s job %s...\n", job.Language, job.JobID)
 
 		output, status, execDuration := executeCode(job.WrappedCode, job.Language)
-		fmt.Println("output:", output)
-		fmt.Println("problemId:", job.ProblemId)
 
 		result := SingleTestCaseResponse{
 			SocketId:  job.SocketId,
@@ -204,52 +264,48 @@ func consume_OneTest_Case(broker string) {
 		}
 
 		data, _ := json.Marshal(result)
-		err = writer.WriteMessages(context.Background(), kafka.Message{
-			Key:   []byte(job.JobID),
-			Value: data,
-		})
+
+		err := ch.Publish(
+			exchange,
+			resultRoutingKey,
+			false,
+			false,
+			amqp.Publishing{
+				ContentType:  "application/json",
+				DeliveryMode: amqp.Persistent,
+				Body:         data,
+			},
+		)
 		if err != nil {
 			fmt.Println(" Failed to publish result:", err)
+			msg.Nack(false, true) // requeue
 			continue
 		}
 
-		fmt.Printf(" Sent result for job %s (%.4fs)\n", job.JobID, execDuration)
+		msg.Ack(false)
+
+		fmt.Printf("Sent result for job %s (%.4fs)\n", job.JobID, execDuration)
 		fmt.Println("--------------------------------------------------")
 	}
 }
 
-// Original consumer for exec_code topic
-func consume_Programmiz_Case(broker string) {
-	reader := kafka.NewReader(kafka.ReaderConfig{
-		Brokers: []string{broker},
-		Topic:   "programiz_execution",
-		GroupID: "multi-lang-executor",
-	})
-	defer reader.Close()
+func consume_Programmiz_Case(conn *amqp.Connection) {
+	ch, msgs := setupConsumerChannel(
+		conn,
+		"programiz_execution",
+		"programiz_execution",
+	)
+	defer ch.Close()
 
-	writer := kafka.NewWriter(kafka.WriterConfig{
-		Brokers: []string{broker},
-		Topic:   "programiz_result",
-	})
-	defer writer.Close()
+	fmt.Println(" Listening on programiz_execution")
 
-	fmt.Println(" Listening for jobs on 'exec_code'...")
-
-	for {
-		msg, err := reader.ReadMessage(context.Background())
-		if err != nil {
-			fmt.Println("️ Kafka read error:", err)
-			time.Sleep(2 * time.Second)
+	for msg := range msgs {
+		var job ProgrammizRequest
+		if err := json.Unmarshal(msg.Body, &job); err != nil {
+			msg.Nack(false, false)
 			continue
 		}
-
-		job := ProgrammizRequest{}
-		if err := json.Unmarshal(msg.Value, &job); err != nil {
-			fmt.Println("️ Invalid job JSON:", err)
-			continue
-		}
-
-		fmt.Printf("️ Executing %s job %s...\n", job.Language, job.JobID)
+		fmt.Println(" i got programiz_execution data btw")
 
 		output, status, execDuration := executeCode(job.Code, job.Language)
 
@@ -266,69 +322,64 @@ func consume_Programmiz_Case(broker string) {
 
 		data, _ := json.Marshal(result)
 
-		fmt.Println(string(data))
-		err = writer.WriteMessages(context.Background(), kafka.Message{
-			Key:   []byte(job.JobID),
-			Value: data,
-		})
-		if err != nil {
-			fmt.Println(" Failed to publish result:", err)
-			continue
-		}
+		ch.Publish(
+			"code_exchange",
+			"programmiz_result",
+			false,
+			false,
+			amqp.Publishing{
+				ContentType:  "application/json",
+				DeliveryMode: amqp.Persistent,
+				Body:         data,
+			},
+		)
 
-		fmt.Printf(" Sent result for job %s (%.4fs)\n", job.JobID, execDuration)
-		fmt.Println("--------------------------------------------------")
+		msg.Ack(false)
 	}
 }
 
-// New consumer for run_code topic (test cases)
-func consume_AllTest_Case(broker string) {
-	reader := kafka.NewReader(kafka.ReaderConfig{
-		Brokers: []string{broker},
-		Topic:   "all_test_execution",
-		GroupID: "test-case-executon",
-	})
-	defer reader.Close()
 
-	writer := kafka.NewWriter(kafka.WriterConfig{
-		Brokers: []string{broker},
-		Topic:   "all_test_result",
-	})
-	defer writer.Close()
+func consume_AllTest_Case(conn *amqp.Connection) {
+	ch, msgs := setupConsumerChannel(
+		conn,
+		"all_test_execution", 
+		"all_test_execution", 
+	)
+	defer ch.Close()
 
-	fmt.Println(" Listening for test cases on 'run_code'...")
+	exchange := "code_exchange"
+	resultRoutingKey := "all_test_result"
 
-	for {
-		msg, err := reader.ReadMessage(context.Background())
-		if err != nil {
-			fmt.Println("️ Kafka read error on run_code:", err)
-			time.Sleep(2 * time.Second)
-			continue
-		}
+	fmt.Println(" Listening for test cases on 'all_test_execution'...")
 
+	for msg := range msgs {
 		var testJob AllTestCasesRequest
-		if err := json.Unmarshal(msg.Value, &testJob); err != nil {
-			fmt.Println("️ Invalid test case JSON:", err)
+		if err := json.Unmarshal(msg.Body, &testJob); err != nil {
+			fmt.Println(" Invalid test case JSON:", err)
+			msg.Nack(false, false)
 			continue
 		}
 
 		fmt.Printf(" Executing test case %d/%d for job %s (%s)\n",
-			testJob.TestCaseNumber, testJob.TotalTestCases, testJob.JobID, testJob.Language)
-		fmt.Printf(" Input: %s\n", testJob.Input)
-		fmt.Printf(" Expected: %s\n", testJob.Expected)
-		// Executing the wrapped code
-		output, status, execDuration := executeCode(testJob.WrappedCode, testJob.Language)
-		// Comparing output with expected result
-		passed := false
+			testJob.TestCaseNumber,
+			testJob.TotalTestCases,
+			testJob.JobID,
+			testJob.Language,
+		)
+
+		output, status, execDuration := executeCode(
+			testJob.WrappedCode,
+			testJob.Language,
+		)
+
 		actualOutput := strings.TrimSpace(output)
 		expectedOutput := strings.TrimSpace(testJob.Expected)
 
+		passed := false
 		if status == "success" {
-			// Trying different comparison methods
 			passed = compareResults(actualOutput, expectedOutput)
 		}
 
-		// Creating test case result
 		testResult := AllTestCasesResponse{
 			JobID:          testJob.JobID,
 			TestCaseID:     testJob.TestCaseID,
@@ -352,25 +403,40 @@ func consume_AllTest_Case(broker string) {
 			testResult.ErrorMessage = output
 		}
 
-		// Publishing result to job_results topic
 		data, _ := json.Marshal(testResult)
-		fmt.Println(string(data))
-		err = writer.WriteMessages(context.Background(), kafka.Message{
-			Key:   []byte(testJob.TestCaseID),
-			Value: data,
-		})
+
+		err := ch.Publish(
+			exchange,
+			resultRoutingKey,
+			false,
+			false,
+			amqp.Publishing{
+				ContentType:  "application/json",
+				DeliveryMode: amqp.Persistent,
+				Body:         data,
+			},
+		)
 		if err != nil {
 			fmt.Println(" Failed to publish test result:", err)
+			msg.Nack(false, true)
 			continue
 		}
 
-		passStatus := " FAILED"
+		msg.Ack(false)
+
+		passStatus := "FAILED"
 		if passed {
-			passStatus = " PASSED"
+			passStatus = "PASSED"
 		}
 
-		fmt.Printf("%s Test case %d: Expected '%s', Got '%s' (%.4fs)\n",
-			passStatus, testJob.TestCaseNumber, expectedOutput, actualOutput, execDuration)
+		fmt.Printf(
+			"%s Test case %d: Expected '%s', Got '%s' (%.4fs)\n",
+			passStatus,
+			testJob.TestCaseNumber,
+			expectedOutput,
+			actualOutput,
+			execDuration,
+		)
 		fmt.Println("--------------------------------------------------")
 	}
 }

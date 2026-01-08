@@ -5,6 +5,9 @@ import { producer } from "../Utils/KafkaProvider.js";
 import { v4 as uuidv4 } from 'uuid';
 import Problem from "../Schemas/CodeSchema.js"
 import { RedisClient } from "../Utils/RedisClient.js"
+import { getRabbit, RabbitChannel } from "../Utils/ConnectRabbit.js";
+
+const RabbitClient = getRabbit()
 
 const execCode = asyncHandler(async (req, res) => {
   const { code, language, socketId } = req.body;
@@ -14,15 +17,19 @@ const execCode = asyncHandler(async (req, res) => {
   }
   const uuid = uuidv4()
   try {
-    await producer.send({
-      topic: "programiz_submission",
-      messages: [
-        {
-          userId: user.id,
-          value: JSON.stringify({ code, language, "id": uuid, "socketId": socketId, "userId": req.user.id }),
-        },
-      ],
-    });
+    const message = {
+      code,
+      language,
+      "id": uuid,
+      "socketId": socketId,
+      "userId": req.user.id
+    }
+    await RabbitChannel.publish(
+      "code_exchange",
+      "programiz_submission",
+      Buffer.from(JSON.stringify(message)),
+      { persistent: true }
+    );
     console.log("Job produced successfully");
     await RedisClient.set(`exec:${uuid}`, JSON.stringify({ code, language, id: uuid, socketId, userId: user.id }),
       { EX: 120 }
