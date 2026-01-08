@@ -543,7 +543,7 @@ function ConsolePanel({ output, isRunning, executionData, handelThegetusrCode })
               executionData.status === 'unsafe' ? 'bg-red-600 text-white' :
                 'bg-red-600 text-white'
               }`}>
-              {executionData.status === 'unsafe' ? 'BLOCKED' : executionData.status.toUpperCase()}
+              {executionData?.status === 'unsafe' ? 'BLOCKED' : executionData?.status?.toUpperCase() || ""}
             </span>
             {executionData.duration_sec > 0 && (
               <span className="text-gray-400">

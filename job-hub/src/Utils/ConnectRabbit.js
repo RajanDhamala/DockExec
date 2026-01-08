@@ -2,34 +2,42 @@
 import amqplib from "amqplib";
 
 const RABBIT_URL = "amqp://guest:guest@localhost:5672";
-const QUEUE_NAME = "logQueue";
 
-let RabbitChannel;
+let RabbitChannel = null;
+let RabbitConnection = null;
 
-const ConnectRabbit = async () => {
+const connectRabbit = async () => {
   if (RabbitChannel) return RabbitChannel;
 
-  const conn = await amqplib.connect(RABBIT_URL);
-  RabbitChannel = await conn.createChannel();
-  await RabbitChannel.assertQueue(QUEUE_NAME, { durable: true });
+  try {
+    RabbitConnection = await amqplib.connect(RABBIT_URL);
+    RabbitChannel = await RabbitConnection.createChannel();
 
-  conn.on("close", () => {
-    console.log("RabbitMQ connection closed");
-    RabbitChannel = null;
-  });
+    console.log("RabbitMQ connected");
 
-  conn.on("error", (err) => console.error("RabbitMQ error:", err));
+    RabbitConnection.on("close", () => {
+      console.warn("RabbitMQ connection closed");
+      RabbitChannel = null;
+      RabbitConnection = null;
+    });
 
-  console.log("RabbitMQ connected and queue asserted");
+    RabbitConnection.on("error", (err) => {
+      console.error("RabbitMQ error:", err);
+    });
 
-  return RabbitChannel;
+    return RabbitChannel;
+  } catch (err) {
+    console.error("Failed to connect to RabbitMQ:", err);
+    await new Promise((res) => setTimeout(res, 5000)); // retry delay
+    return connectRabbit();
+  }
 };
 
 const getRabbit = async () => {
-  if (RabbitChannel) return RabbitChannel
-  return ConnectRabbit()
-}
+  if (RabbitChannel) return RabbitChannel;
+  return connectRabbit();
+};
 
-
-export { ConnectRabbit, getRabbit }
+// Optional: export raw connection too if needed
+export { connectRabbit, getRabbit, RabbitChannel, RabbitConnection };
 
