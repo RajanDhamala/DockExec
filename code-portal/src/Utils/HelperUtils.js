@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const LogoutUser=async (clearCurrentUser, navigate) => {
+const LogoutUser = async (clearCurrentUser, navigate) => {
   try {
     await axios.get(
       "http://localhost:8000/users/logout",
@@ -15,4 +15,4 @@ const LogoutUser=async (clearCurrentUser, navigate) => {
   }
 };
 
-export {LogoutUser};
+export { LogoutUser };

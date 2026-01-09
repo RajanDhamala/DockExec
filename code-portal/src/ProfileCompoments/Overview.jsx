@@ -267,7 +267,7 @@ export default function Overview() {
         onClose={closeLogs}
       />
 
-      <main className="flex-1 p-4 md:p-8 bg-gray-50  dark:bg-gray-950 transition-colors duration-200">
+      <main className="flex-1 bg-gray-50  dark:bg-gray-950 transition-colors duration-200">
         <div className="mb-8">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
             <div>

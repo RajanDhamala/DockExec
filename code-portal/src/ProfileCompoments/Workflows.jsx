@@ -250,7 +250,7 @@ export default function WorkflowsPage() {
 
 
   return (
-    <div className="space-y-8 p-4 md:p-0">
+    <div className="space-y-8 ">
       <LogsDialog
         open={dialog.open}
         type={dialog.type}

@@ -13,7 +13,8 @@ import {
   ArrowRight,
   ChevronLeft,
   ChevronRight,
-  DollarSign
+  DollarSign,
+  SlidersHorizontal
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,16 +27,21 @@ import {
   DropdownMenuSeparator,
   DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu";
-import LocationDialog from "./LocationPage";
-
+import useUserStore from "@/ZustandStore/UserStore";
+import { LogoutUser } from "@/Utils/HelperUtils";
+import { useNavigate } from "react-router-dom";
+import useMediaQuery from "@/Utils/UseMediaQuery";
 const navigation = [
   { name: "Overview", href: "/overview", icon: Home },
   { name: "Workflows", href: "/workflows", icon: Workflow },
   { name: "Settings", href: "/settings", icon: Settings },
   { name: "Billing", href: "/bills", icon: DollarSign },
+  { name: "Prefrences", href: "/prefrences", icon: SlidersHorizontal },
 ];
 
 export function DashboardLayout() {
+  const { currentUser, clearCurrentUser } = useUserStore()
+  const navigate = useNavigate()
   const location = useLocation();
   const pathname = location.pathname;
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
@@ -72,6 +78,8 @@ export function DashboardLayout() {
 
     document.documentElement.classList.toggle("dark", isDarkMode);
   }, [isDarkMode]);
+  const isMobile = useMediaQuery("(max-width: 767px)")
+  const effectiveCollapsed = isMobile ? false : isCollapsed
 
   return (
     <div className={`min-h-screen bg-white dark:bg-gray-950 transition-colors duration-200`}>
@@ -94,11 +102,6 @@ export function DashboardLayout() {
             </div>
             <span className="text-gray-900 dark:text-white hidden sm:inline-block">DockExec</span>
           </Link>
-
-          <div className="hidden md:flex text-sm text-gray-500 dark:text-gray-400 items-center ml-2">
-            <span>Dashboard</span> <span className="mx-1">/</span>
-            <span className="capitalize">{pathname === "/" ? "Overview" : pathname.slice(1)}</span>
-          </div>
         </div>
 
         <div className="flex items-center gap-2 md:gap-4">
@@ -132,17 +135,22 @@ export function DashboardLayout() {
               <Button variant="ghost" size="icon" className="rounded-full">
                 <Avatar className="w-8 h-8 border border-gray-200 dark:border-gray-700">
                   <AvatarImage src="/placeholder.svg?height=32&width=32" />
-                  <AvatarFallback className="dark:bg-gray-800 dark:text-gray-200">AE</AvatarFallback>
+                  <AvatarFallback className="dark:bg-gray-800 dark:text-gray-200">{currentUser?.fullname.slice(0, 2)}</AvatarFallback>
                 </Avatar>
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56 dark:bg-gray-900 dark:border-gray-800">
-              <DropdownMenuLabel className="dark:text-white">Alex Evans</DropdownMenuLabel>
+              <DropdownMenuLabel className="dark:text-white">{currentUser?.fullname || "Guest"}</DropdownMenuLabel>
               <DropdownMenuSeparator className="dark:bg-gray-800" />
-              <DropdownMenuItem className="dark:text-gray-200 dark:focus:bg-gray-800">Settings</DropdownMenuItem>
-              <DropdownMenuItem className="dark:text-gray-200 dark:focus:bg-gray-800">Support</DropdownMenuItem>
+              <Link to={"/settings"}>
+                <DropdownMenuItem className="dark:text-gray-200 dark:focus:bg-gray-800">
+                  Settings</DropdownMenuItem>
+              </Link>
+              <Link to={"/support"}>
+                <DropdownMenuItem className="dark:text-gray-200 dark:focus:bg-gray-800">Support</DropdownMenuItem>
+              </Link>
               <DropdownMenuSeparator className="dark:bg-gray-800" />
-              <DropdownMenuItem className="dark:text-gray-200 dark:focus:bg-gray-800">Sign out</DropdownMenuItem>
+              <DropdownMenuItem className="dark:text-gray-200 dark:focus:bg-gray-800" onClick={() => LogoutUser(clearCurrentUser, navigate)}>Sign out</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
@@ -218,35 +226,47 @@ export function DashboardLayout() {
               </div>
             )}
 
+
             <nav className="space-y-1 md:space-y-2">
               {navigation.map((item) => {
                 const isActive = pathname === item.href;
+
                 return (
                   <Link
                     key={item.name}
                     to={item.href}
                     onClick={() => setIsSidebarOpen(false)}
-                    title={isCollapsed ? item.name : ""}
+                    title={effectiveCollapsed ? item.name : ""}
                     className={`
-                      flex items-center w-full 
-                      ${isCollapsed ? 'justify-center px-2 py-3' : 'justify-start px-3 py-2 md:px-4 md:py-3'}
-                      rounded-md text-sm md:text-base font-medium transition-all duration-200
-                      ${isActive
-                        ? "bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300 hover:bg-purple-100 dark:hover:bg-purple-900/30"
+          flex items-center w-full
+          ${effectiveCollapsed
+                        ? 'justify-center px-2 py-3'
+                        : 'justify-start px-3 py-2 md:px-4 md:py-3'}
+          rounded-md text-sm md:text-base font-medium transition-all duration-200
+          ${isActive
+                        ? "bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300"
                         : "text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800"
                       }
-                    `}
+        `}
                   >
-                    <item.icon className={`
-                        ${isCollapsed ? 'w-6 h-6' : 'w-4 h-4 md:w-5 md:h-5 mr-3'} 
-                        transition-all
-                    `} />
+                    <item.icon
+                      className={`
+            ${effectiveCollapsed
+                          ? 'w-6 h-6'
+                          : 'w-4 h-4 md:w-5 md:h-5 mr-3'}
+            transition-all
+          `}
+                    />
 
-                    {!isCollapsed && <span className="whitespace-nowrap">{item.name}</span>}
+                    {/* 🔥 ALWAYS SHOW TEXT ON MOBILE */}
+                    {(!effectiveCollapsed || isMobile) && (
+                      <span className="whitespace-nowrap">{item.name}</span>
+                    )}
                   </Link>
                 );
               })}
             </nav>
+
           </div>
         </aside>
 

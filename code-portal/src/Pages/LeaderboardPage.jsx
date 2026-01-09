@@ -42,6 +42,7 @@ export default function LeaderboardPage() {
 
   const fetchYourPercentile = async () => {
     if (!currentUser) {
+      console.log("there are  no current users btw")
       return null
     }
     const res = await axios.get(`http://localhost:8000/users/percentile`, { withCredentials: true })
@@ -51,7 +52,9 @@ export default function LeaderboardPage() {
 
   const { data: PercentileData, isLoading: PercentileLoading, isError: PercentileError } = useQuery({
     queryKey: ["yourPercentile"],
-    queryFn: fetchYourPercentile
+    queryFn: fetchYourPercentile,
+    enabled:!!currentUser,
+    retry:2
   })
 
   const userPlacement = useMemo(() => {

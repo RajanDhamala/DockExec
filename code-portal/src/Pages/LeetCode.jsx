@@ -7,6 +7,7 @@ import { Link } from "react-router-dom";
 import { toast } from "react-hot-toast";
 import useSocketStore from "@/ZustandStore/SocketStore";
 import ExecutionGraph from "./ExecutionGraph";
+import useUserStore from "@/ZustandStore/UserStore";
 
 const fetchProblems = async () => {
   const { data } = await axios.get("http://localhost:8000/code/list");
@@ -721,7 +722,7 @@ export default function LeetCode() {
 
 
   const { socket, initSocket, isConnected, clientId } = useSocketStore();
-
+  const { currentUser } = useUserStore()
   // Initialize socket
   useEffect(() => {
     initSocket();
@@ -801,6 +802,7 @@ export default function LeetCode() {
   const lastLocalToastRef = useRef(0);
   const lastSaveRef = useRef(0);
   const saveInFlightRef = useRef(false);
+  const [open, setOpen] = useState(false)
 
   const saveCode2LocalStorage = (problemId, codeText = "", lang = "") => {
     if (!problemId || !lang) return;
@@ -1042,9 +1044,11 @@ export default function LeetCode() {
           </Link>
         </div>
         <div className="flex items-center gap-4">
-          <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white font-medium text-sm">
-            U
-          </div>
+          <Link to={"/overview"}>
+            <div className="w-8 h-8 bg-blue-600  rounded-full flex items-center justify-center text-white font-medium text-sm">
+              {currentUser?.fullname.slice(0, 2) || "guest"}
+            </div>
+          </Link>
         </div>
       </header>
 
