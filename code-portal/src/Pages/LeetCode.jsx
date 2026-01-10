@@ -1045,7 +1045,7 @@ export default function LeetCode() {
         </div>
         <div className="flex items-center gap-4">
           <Link to={"/overview"}>
-            <div className="w-8 h-8 bg-blue-600  rounded-full flex items-center justify-center text-white font-medium text-sm">
+            <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white font-medium text-sm">
               {currentUser?.fullname.slice(0, 2) || "guest"}
             </div>
           </Link>

@@ -114,17 +114,29 @@ const Billing = () => {
           </div>
 
           {/* Drawer with full graph */}
+
           <Drawer open={isDrawerOpen} onOpenChange={setIsDrawerOpen} side="right" size="lg">
-            <DrawerContent className="bg-gray-950 p-4">
+            <DrawerContent className="bg-white dark:bg-gray-950 p-4 border-l border-gray-200 dark:border-gray-800">
               <DrawerHeader className="flex justify-between items-center">
-                <DrawerTitle className="text-white">Token Usage</DrawerTitle>
-                <Button variant="ghost" onClick={() => setIsDrawerOpen(false)}>Close</Button>
+                <DrawerTitle className="text-gray-900 dark:text-white">
+                  Token Usage
+                </DrawerTitle>
+
+                <Button
+                  variant="ghost"
+                  className="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
+                  onClick={() => setIsDrawerOpen(false)}
+                >
+                  Close
+                </Button>
               </DrawerHeader>
+
               <div className="mt-4">
                 <MeteredUsageGraph />
               </div>
             </DrawerContent>
           </Drawer>
+
 
           {/* Pro Plan */}
           <div className="space-y-4">
@@ -200,16 +212,25 @@ const MeteredUsageGraph = () => {
   });
 
   return (
-    <div className="bg-gray-950 rounded-xl p-6 w-full max-w-5xl mx-auto border border-gray-800">
+    <div className="bg-white dark:bg-gray-950 rounded-xl p-6 w-full max-w-5xl mx-auto border border-gray-200 dark:border-gray-800">
+
+      {/* Controls */}
       <div className="flex space-x-2 mb-4">
         {/* Month Selector */}
         <Select value={`${month}`} onValueChange={val => setMonth(Number(val))}>
-          <SelectTrigger className="w-32 bg-gray-800 border border-gray-700 text-white">
-            <SelectValue placeholder="Select Month" className="text-white data-[placeholder]:text-gray-400" />
+          <SelectTrigger className="w-32 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white">
+            <SelectValue
+              placeholder="Select Month"
+              className="text-gray-900 dark:text-white data-[placeholder]:text-gray-400"
+            />
           </SelectTrigger>
-          <SelectContent className="bg-gray-800 text-white">
+          <SelectContent className="bg-white dark:bg-gray-800 text-gray-900 dark:text-white">
             {Array.from({ length: 12 }, (_, i) => (
-              <SelectItem key={i + 1} value={`${i + 1}`} className="text-white hover:bg-gray-700">
+              <SelectItem
+                key={i + 1}
+                value={`${i + 1}`}
+                className="hover:bg-gray-100 dark:hover:bg-gray-700"
+              >
                 {new Date(0, i).toLocaleString("en-US", { month: "long" })}
               </SelectItem>
             ))}
@@ -218,12 +239,21 @@ const MeteredUsageGraph = () => {
 
         {/* Year Selector */}
         <Select value={`${year}`} onValueChange={val => setYear(Number(val))}>
-          <SelectTrigger className="w-32 bg-gray-800 border border-gray-700 text-white">
-            <SelectValue placeholder="Select Year" className="text-white data-[placeholder]:text-gray-400" />
+          <SelectTrigger className="w-32 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white">
+            <SelectValue
+              placeholder="Select Year"
+              className="text-gray-900 dark:text-white data-[placeholder]:text-gray-400"
+            />
           </SelectTrigger>
-          <SelectContent className="bg-gray-800 text-white">
+          <SelectContent className="bg-white dark:bg-gray-800 text-gray-900 dark:text-white">
             {Array.from({ length: 5 }, (_, i) => 2026 - i).map(y => (
-              <SelectItem key={y} value={`${y}`} className="text-white hover:bg-gray-700">{y}</SelectItem>
+              <SelectItem
+                key={y}
+                value={`${y}`}
+                className="hover:bg-gray-100 dark:hover:bg-gray-700"
+              >
+                {y}
+              </SelectItem>
             ))}
           </SelectContent>
         </Select>
@@ -231,20 +261,51 @@ const MeteredUsageGraph = () => {
 
       {/* Chart */}
       {isLoading ? (
-        <div className="w-full h-80 bg-gray-800 animate-pulse rounded-lg"></div>
+        <div className="w-full h-80 bg-gray-100 dark:bg-gray-800 animate-pulse rounded-lg" />
       ) : (
         <ResponsiveContainer width="100%" height={320}>
           <LineChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-            <CartesianGrid strokeDasharray="0" stroke="#1f2937" vertical={false} />
-            <XAxis dataKey="date" stroke="#6b7280" tick={{ fill: '#6b7280', fontSize: 12 }} tickLine={false} axisLine={false} />
-            <YAxis stroke="#6b7280" tick={{ fill: '#6b7280', fontSize: 12 }} tickLine={false} axisLine={false} />
-            <Tooltip />
-            <Line type="monotone" dataKey="usage" stroke="#6366f1" strokeWidth={2.5} dot={false} />
+            <CartesianGrid
+              strokeDasharray="0"
+              stroke="#e5e7eb"
+              className="dark:stroke-gray-800"
+              vertical={false}
+            />
+
+            <XAxis
+              dataKey="date"
+              tick={{ fill: "#6b7280", fontSize: 12 }}
+              tickLine={false}
+              axisLine={false}
+            />
+
+            <YAxis
+              tick={{ fill: "#6b7280", fontSize: 12 }}
+              tickLine={false}
+              axisLine={false}
+            />
+
+            <Tooltip
+              contentStyle={{
+                backgroundColor: "var(--tooltip-bg, white)",
+                borderColor: "var(--tooltip-border, #e5e7eb)",
+                color: "var(--tooltip-text, #111827)",
+                borderRadius: "8px",
+              }}
+              wrapperClassName="dark:!bg-gray-900 dark:!border-gray-700 dark:!text-white"
+            />
+
+            <Line
+              type="monotone"
+              dataKey="usage"
+              stroke="#6366f1"
+              strokeWidth={2.5}
+              dot={false}
+            />
           </LineChart>
         </ResponsiveContainer>
       )}
-    </div>
-  );
+    </div>);
 };
 
 export default Billing;

@@ -153,7 +153,7 @@ function Navbar() {
                       className="justify-start text-slate-300 hover:text-white"
                       onClick={() => {
                         setIsOpen(false)
-                        navigate("/profile")
+                        navigate("/overview")
                       }}
                     >
                       Profile

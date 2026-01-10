@@ -12,8 +12,8 @@ const consumeJobs = async () => {
   try {
     await ConnectDb()
     await connectRedis()
-    setInterval(FlushBuffer, 10000)
-    setInterval(getActiveUsers, 5000)
+    setInterval(FlushBuffer, 150000)
+    setInterval(getActiveUsers, 150000)
     setInterval(SyncLeaderboard, 150000)
     const conn = await amqplib.connect("amqp://guest:guest@localhost:5672");
     const channel = await conn.createChannel();

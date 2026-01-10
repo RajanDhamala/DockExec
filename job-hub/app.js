@@ -5,7 +5,6 @@ import { GithubProvider, GoogleProvider } from './src/GithubProvider.js';
 import cookieParser from "cookie-parser";
 import cors from "cors";
 import UserRouter from "./src/Routes/UserRoute.js"
-import { producer, consumer, initkafka } from "./src/Utils/KafkaProvider.js";
 import ApiRouter from "./src/Routes/ApiRoute.js";
 import { emitSingleTestresult, emitBlockedresult, emitAllCaseResult, emitProgrammizResult } from "./src/Utils/FafkaSocet.js";
 import CodeRouter from "./src/Routes/CodeRoute.js"
@@ -110,13 +109,27 @@ await connectRedis();
       if (!msg) return;
       const data = JSON.parse(msg.content.toString());
       await emitSingleTestresult(data);
+      LogTrialResult(data)
       channel.ack(msg);
     });
 
     channel.consume("all_test_result", async (msg) => {
       if (!msg) return;
       const data = JSON.parse(msg.content.toString());
-      await emitAllCaseResult(data);
+      console.log(" Job result received:", data);
+      if (data?.testCaseId) {
+        await emitAllCaseResult(data);
+        await save2Redis(data)
+        if (data.testCaseNumber !== data.totalTestCases) {
+          console.log(" this is final test case no")
+        } else {
+          const key = `job:${data.jobId}`;
+          const all = await RedisClient.hGetAll(key);
+          console.log("all data:", all)
+          await saveTest2db(all)
+          await LogTestCaseResult(all)
+        }
+      }
       channel.ack(msg);
     });
 

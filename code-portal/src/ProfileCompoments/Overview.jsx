@@ -1,6 +1,6 @@
 
 
-import { useState } from "react"
+import { useState, useEffect, useMemo } from "react"
 import {
   Workflow,
   AlertTriangle,
@@ -258,6 +258,24 @@ export default function Overview() {
       return ay !== by ? ay - by : am - bm;
     });
   };
+  function useIsMobile(breakpoint = 640) {
+    const [isMobile, setIsMobile] = useState(false);
+
+    useEffect(() => {
+      const check = () => setIsMobile(window.innerWidth < breakpoint);
+      check();
+      window.addEventListener("resize", check);
+      return () => window.removeEventListener("resize", check);
+    }, [breakpoint]);
+
+    return isMobile;
+  }
+  const isMobile = useIsMobile();
+
+  const visibleChartData = useMemo(() => {
+    if (!chartData) return [];
+    return isMobile ? chartData.slice(-3) : chartData;
+  }, [chartData, isMobile]);
   return (
     <>
       <LogsDialog
@@ -454,20 +472,40 @@ export default function Overview() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="col-span-1 lg:col-span-2 space-y-8">
             {/* Charts Section */}
+
             <Card className="border-gray-200 bg-white dark:bg-gray-900 dark:border-slate-700 shadow-sm">
               <CardHeader className="pb-4">
-                <CardTitle className="text-lg font-semibold dark:text-white">Performance Analytics</CardTitle>
+                <CardTitle className="text-lg font-semibold dark:text-white">
+                  Performance Analytics
+                </CardTitle>
                 <CardDescription className="dark:text-slate-400">
                   Submissions per month across all systems
                 </CardDescription>
               </CardHeader>
+
               <CardContent>
                 <div className="h-80 w-full">
                   <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={chartData}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" className="dark:stroke-gray-800" />
-                      <XAxis dataKey="name" stroke="#6b7280" fontSize={12} className="dark:text-gray-400" />
-                      <YAxis stroke="#6b7280" fontSize={12} className="dark:text-gray-400" />
+                    <AreaChart data={visibleChartData}>
+                      <CartesianGrid
+                        strokeDasharray="3 3"
+                        stroke="#e5e7eb"
+                        className="dark:stroke-gray-800"
+                      />
+
+                      <XAxis
+                        dataKey="name"
+                        stroke="#6b7280"
+                        fontSize={12}
+                        className="dark:text-gray-400"
+                      />
+
+                      <YAxis
+                        stroke="#6b7280"
+                        fontSize={12}
+                        className="dark:text-gray-400"
+                      />
+
                       <Tooltip
                         contentStyle={{
                           backgroundColor: "var(--tooltip-bg, white)",
@@ -478,9 +516,31 @@ export default function Overview() {
                         }}
                         wrapperClassName="dark:!bg-gray-800 dark:!border-slate-700 dark:!text-white"
                       />
-                      <Area type="monotone" dataKey="PrintCase" stroke="#8b5cf6" fill="#8b5cf6" fillOpacity={0.1} strokeWidth={2} />
-                      <Area type="monotone" dataKey="TestCases" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.1} strokeWidth={2} />
-                      <Area type="monotone" dataKey="Programmiz" stroke="#f97316" fill="#f97316" fillOpacity={0.1} strokeWidth={2} />
+
+                      <Area
+                        type="monotone"
+                        dataKey="PrintCase"
+                        stroke="#8b5cf6"
+                        fill="#8b5cf6"
+                        fillOpacity={0.1}
+                        strokeWidth={2}
+                      />
+                      <Area
+                        type="monotone"
+                        dataKey="TestCases"
+                        stroke="#3b82f6"
+                        fill="#3b82f6"
+                        fillOpacity={0.1}
+                        strokeWidth={2}
+                      />
+                      <Area
+                        type="monotone"
+                        dataKey="Programmiz"
+                        stroke="#f97316"
+                        fill="#f97316"
+                        fillOpacity={0.1}
+                        strokeWidth={2}
+                      />
                     </AreaChart>
                   </ResponsiveContainer>
                 </div>

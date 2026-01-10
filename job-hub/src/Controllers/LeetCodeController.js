@@ -196,8 +196,6 @@ const GetSubmissons = asyncHandler(async (req, res) => {
   }
   submissions = await TestCase.find({ "userId": userId, problemId }).sort({ createdAt: -1 }).limit(10).select("problemId language createdAt totalTestCases status passedNo");
   await RedisClient.set(submissionsKey, JSON.stringify(submissions), { EX: 120 });
-
-
   return res.send(new ApiResponse(200, 'fetched submissions data', submissions));
 })
 

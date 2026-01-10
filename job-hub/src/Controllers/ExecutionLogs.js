@@ -81,6 +81,7 @@ const LogTestCaseResult = async (data) => {
 const LogRawExecution = async (data) => {
   console.log("language :", data.language)
   try {
+    console.log("result aayo hai vai")
     return await RawExecution.create({
       _id: data.jobId,
       userId: data.userId,

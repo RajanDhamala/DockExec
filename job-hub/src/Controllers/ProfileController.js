@@ -14,7 +14,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { RedisClient } from "../Utils/RedisClient.js"
 import Problem from "../Schemas/CodeSchema.js"
 import { hashPassword, verifyPassword } from "../Utils/Authutils.js"
-import { getRabbit } from "../Utils/ConnectRabbit.js";
+import { getRabbit, RabbitChannel } from "../Utils/ConnectRabbit.js";
 
 
 const RabbitClient = getRabbit()
@@ -219,7 +219,7 @@ const reRunRecentExecutions = asyncHandler(async (req, res) => {
     wrapper_type: problemData.wrapper_type
   };
 
-  await RabbitClient.publish(
+  await RabbitChannel.publish(
     "code_exchange",
     "all_cases_submission",
     Buffer.from(JSON.stringify(message)),
@@ -387,7 +387,7 @@ const RecentPrintRuns = asyncHandler(async (req, res) => {
     .populate({
       path: "problemid",
       select: "_id title"
-    })
+    }).sort({ createdAt: -1 }).limit(7)
     .lean();
 
   if (!printData || printData.length === 0) {
@@ -461,21 +461,15 @@ const reRunRecentPrints = asyncHandler(async (req, res) => {
   if (!code || !language || !problemId) {
     throw new ApiError(400, 'please include type, language, code,  and problemId in request');
   }
-
-  await producer.send({
-    topic: "reRun_printCase",
-    messages: [{
-      value: JSON.stringify({
-        code,
-        language,
-        id: uuid,
-        socketId,
-        userId: req.user.id,
-        problemId: problemId,
-      })
-    }]
-
-  });
+  const message = {
+    code,
+    language,
+    id: uuid,
+    socketId,
+    userId: req.user.id,
+    problemId: problemId,
+  }
+  await RabbitChannel.publish("reRun_printCase", Buffer.from(JSON.stringify(message)))
 
   return res.send(new ApiResponse(200, 'code sent for running', { uuid }));
 })
@@ -497,8 +491,8 @@ const DeletePrints = asyncHandler(async (req, res) => {
 
 const ProgrammizExecutions = asyncHandler(async (req, res) => {
   const user = req.user;
-  const programmizData = await RawExecution.find({ userId: user.id }).select("execution_time language status output createdAt _id").limit(5)
-  if (!programmizData) {
+  const programmizData = await RawExecution.find({ userId: user.id }).select("execution_time language status output createdAt _id").sort({ createdAt: -1 }).limit(5)
+  if (!programmizData.length) {
     throw new ApiError(400, null, 'user has no programmiz reuslts')
   }
   return res.send(new ApiResponse(200, 'successfully fethed programmiz results', programmizData))
@@ -552,7 +546,7 @@ const reRunPorgrammiz = asyncHandler(async (req, res) => {
       userId: req.user.id
     };
 
-    await RabbitClient.publish(
+    await RabbitChannel.publish(
       "code_exchange",
       "programiz_submission",
       Buffer.from(JSON.stringify(message)),

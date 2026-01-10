@@ -44,7 +44,7 @@ export function DashboardLayout() {
   const navigate = useNavigate()
   const location = useLocation();
   const pathname = location.pathname;
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(true);
   const [isDarkMode, setIsDarkMode] = useState(false);
 
@@ -81,10 +81,10 @@ export function DashboardLayout() {
   const isMobile = useMediaQuery("(max-width: 767px)")
   const effectiveCollapsed = isMobile ? false : isCollapsed
 
+
+
   return (
     <div className={`min-h-screen bg-white dark:bg-gray-950 transition-colors duration-200`}>
-
-
       <header className="sticky top-0 z-30 h-16 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 px-4 md:px-6 flex items-center justify-between transition-colors duration-200">
         <div className="flex items-center gap-4">
           <Button
@@ -190,43 +190,6 @@ export function DashboardLayout() {
           </div>
 
           <div className="p-4 md:p-4">
-            {/* Mobile Sidebar Search */}
-            <div className="relative mb-6 md:hidden">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-              <Input
-                placeholder="Search anything..."
-                className="pl-10 bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-sm dark:text-gray-200"
-              />
-            </div>
-
-            {/* Desktop Sidebar Search (Hidden when collapsed) */}
-            {!isCollapsed && (
-              <div className="relative mb-6 hidden md:block">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                <Input
-                  placeholder="Search anything..."
-                  className="pl-10 bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-sm dark:text-gray-200"
-                />
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  className="absolute right-1 top-1/2 transform -translate-y-1/2 w-6 h-6 dark:text-gray-400"
-                >
-                  <ArrowRight className="w-3 h-3" />
-                </Button>
-              </div>
-            )}
-
-            {/* Collapsed Search Icon (Optional: Shows search icon only when collapsed) */}
-            {isCollapsed && (
-              <div className="hidden md:flex justify-center mb-6">
-                <Button variant="ghost" size="icon" onClick={() => setIsCollapsed(false)} title="Search">
-                  <Search className="w-5 h-5 text-gray-400" />
-                </Button>
-              </div>
-            )}
-
-
             <nav className="space-y-1 md:space-y-2">
               {navigation.map((item) => {
                 const isActive = pathname === item.href;
@@ -258,7 +221,7 @@ export function DashboardLayout() {
           `}
                     />
 
-                    {/* 🔥 ALWAYS SHOW TEXT ON MOBILE */}
+                    {/*  ALWAYS SHOW TEXT ON MOBILE */}
                     {(!effectiveCollapsed || isMobile) && (
                       <span className="whitespace-nowrap">{item.name}</span>
                     )}

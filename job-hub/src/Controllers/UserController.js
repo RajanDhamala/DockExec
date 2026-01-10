@@ -173,6 +173,13 @@ const UpdateProfile = asyncHandler(async (req, res) => {
   );
 });
 
+const getYourLocation = asyncHandler(async (req, res) => {
+  const user = req.user
+  const userLocation = await UserModel.findOne({ _id: user.id }).select("location.coordinates")
+  if (!userLocation) throw new ApiError(400, null, "user not found")
+  if (!userLocation.location.coordinates) throw new ApiError(400, null, "coordinated undefined")
+  return res.send(new ApiResponse(200, "successfully fetched user coordinates", userLocation))
+})
 
 const isValidLatitude = (lat) => typeof lat === "number" && lat >= -90 && lat <= 90;
 const isValidLongitude = (lng) => typeof lng === "number" && lng >= -180 && lng <= 180;
@@ -583,6 +590,6 @@ const DeleteAccount = asyncHandler(async (req, res) => {
 
 
 export {
-  RegisterUser, LoginUser, LogoutUser, UpdatePoints, ChangeUserAvatar, UpdateProfile, UpdateUserCoordinates, GeturPoints, getUsersNearYou, getLeaderboard, AvgExectionTimeMetrics, exeMetrics, DeleteAccount, getUserBasicMetrics
+  RegisterUser, LoginUser, LogoutUser, UpdatePoints, ChangeUserAvatar, UpdateProfile, getYourLocation, UpdateUserCoordinates, GeturPoints, getUsersNearYou, getLeaderboard, AvgExectionTimeMetrics, exeMetrics, DeleteAccount, getUserBasicMetrics
 }
 // 192.168.18.26:29092 ip i want
