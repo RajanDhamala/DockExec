@@ -1,7 +1,7 @@
 
 import { Suspense } from "react";
 import "./index.css";
-import { LazyLandingPage, LazySettingsPage, LazyProfilePage, LazyLoginPage, LazyWritePage, LazyLeetCode, LazyTestPage, LazyBillingPage, LazyPrefrencePage } from "./LazyLoading/LazyLoading";
+import { LazyLandingPage, LazySettingsPage, LazyLoginPage, LazyWritePage, LazyLeetCode, LazyTestPage, LazyBillingPage, LazyPrefrencePage } from "./LazyLoading/LazyLoading";
 import { BrowserRouter as Router, Routes, Route, } from "react-router-dom";
 import { QueryClientProvider } from "@tanstack/react-query";
 import queryClient from "./Utils/QueryConfig.jsx";
@@ -62,21 +62,15 @@ function App() {
             <Route path="/leet" element={<LazyLeetCode />} />
             <Route path="/test" element={<LazyTestPage />} />
 
-            <Route path="/profile" element={<LazyProfilePage />} />
-
             <Route path="/location" element={<LocationPage />} />
-
             <Route path="/leaderboard" element={<LeaderboardPage />} />
-
             <Route path="/tokenGraph" element={<TokenUsageGraph />} />
-            {/* test routes (WITH dashboard layout) */}
+
             <Route element={<DashboardLayout />}>
               <Route path="/overview" element={<Overview />} />
               <Route path="workflows" element={<WorkflowPage />} />
               <Route path="/settings" element={<SettingsPage />} />
-
               <Route path="/bills" element={<LazyBillingPage />} />
-
               <Route path="/prefrences" element={<LazyPrefrencePage />} />
             </Route>
 

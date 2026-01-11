@@ -194,7 +194,7 @@ const GetSubmissons = asyncHandler(async (req, res) => {
   } catch (Err) {
     console.log("data not found on redis btw")
   }
-  submissions = await TestCase.find({ "userId": userId, problemId }).sort({ createdAt: -1 }).limit(10).select("problemId language createdAt totalTestCases status passedNo");
+  submissions = await TestCase.find({ "userId": userId, problemId }).sort({ createdAt: -1 }).limit(10).select(" problemId language createdAt totalTestCases status passedNo");
   await RedisClient.set(submissionsKey, JSON.stringify(submissions), { EX: 120 });
   return res.send(new ApiResponse(200, 'fetched submissions data', submissions));
 })
@@ -205,7 +205,7 @@ const GetTestCode = asyncHandler(async (req, res) => {
   if (!testCaseId || !problemId) {
     throw new ApiError(400, 'please provide testCaseId and problemId in request params');
   }
-  const data = await TestCase.findOne({ _id: testCaseId, problemId }).select("code language");
+  const data = await TestCase.findOne({ _id: testCaseId, problemId }).select("code language testCases problemId createdAt totalTestCases status passedNo");
 
   return res.send(new ApiResponse(200, 'fetched test case code', data));
 

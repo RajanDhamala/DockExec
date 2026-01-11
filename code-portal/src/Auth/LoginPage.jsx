@@ -329,7 +329,7 @@ export default function AuthPage() {
                     type="button"
                     variant="outline"
                     onClick={() => handleSocialClick("Google")}
-                    className="w-full h-11 bg-white text-gray-900 border-gray-200 hover:border-blue-500 hover:text-gray-900 flex items-center justify-center gap-3 shadow-sm"
+                    className="w-full h-11 bg-white text-gray-900 dark:text-white border-gray-200 hover:border-blue-500 hover:text-gray-900 flex items-center justify-center gap-3 shadow-sm"
                   >
                     <span className="flex h-8 w-8 items-center justify-center rounded-full">
                       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" className="h-7 w-7">
