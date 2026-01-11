@@ -1,11 +1,9 @@
-"use client";
-
+import { Link } from "react-router-dom";
 import { useEffect, useRef, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import axios from "axios";
 import useSocketStore from "@/ZustandStore/SocketStore";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -14,17 +12,18 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Play, Code2, Terminal, Loader2, Timer } from "lucide-react";
+  Play,
+  Code2,
+  Terminal,
+  Loader2,
+  Timer,
+  RotateCcw,
+  Cpu
+} from "lucide-react";
 import toast from "react-hot-toast";
 import Editor from "@monaco-editor/react";
 
-//  Boilerplate code templates for all languages
+// Boilerplate code templates for all languages
 const getBoilerplateCode = (language) => {
   const templates = {
     python: `# Python Hello World
@@ -95,23 +94,24 @@ export default function WriteCode() {
   const [lines, setLines] = useState([]);
   const [duration, setDuration] = useState(null);
 
-  const { socket, initSocket, isConnected, clientId } = useSocketStore();
+  const { socket, initSocket, isConnected, clientId, getSocket } = useSocketStore();
   const consoleRef = useRef(null);
 
-  //  Initialize socket connection
   useEffect(() => {
-    initSocket();
+    console.log(isConnected)
+    if (!socket) {
+      initSocket();
+    }
     return () => socket?.disconnect();
   }, []);
 
-  //  Update code when language changes
   useEffect(() => {
     setCode(getBoilerplateCode(language));
     setLines([]);
     setDuration(null);
   }, [language]);
 
-  //  Handle result from Kafka
+  // Handle result from Kafka
   useEffect(() => {
     if (!socket) return;
 
@@ -177,12 +177,21 @@ export default function WriteCode() {
     }
   }, [lines]);
 
-  //  Send job to backend
   const mutation = useMutation({
     mutationFn: async () => {
+      let sock = socket;
+
+      if (!sock || !isConnected) {
+        console.log("Socket not connected, waiting for connection...");
+        sock = await getSocket();
+        if (!sock) {
+          console.error("Could not connect to socket, aborting run");
+          return;
+        }
+      }
       const res = await axios.post(
         "http://localhost:8000/api/exec",
-        { code, language, clientId, "socketId": socket.id },
+        { code, language, clientId, "socketId": sock.id },
         { withCredentials: true }
       );
       return res.data;
@@ -216,124 +225,89 @@ export default function WriteCode() {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-900 flex flex-col items-center justify-center p-4">
-      <Card className="w-full max-w-5xl bg-gray-900/80 backdrop-blur-xl border-gray-800 shadow-2xl relative z-10">
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Language Selector */}
-            <div className="space-y-2">
+    <div className="min-h-screen bg-gray-900 text-slate-300 font-sans selection:bg-blue-500/30 flex flex-col overflow-hidden">
 
+      <main className="flex-1 max-w-screen-2xl mx-auto w-full px-3 sm:px-4 lg:px-8 py-4 sm:py-6 overflow-hidden">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 h-[calc(100vh-2rem)] sm:h-[calc(100vh-3rem)] lg:h-[calc(100vh-8rem)]">
 
-              <div className="flex space-x-5">
-                <Label className="text-sm font-medium text-gray-300 flex items-center gap-2">
-                  <Terminal className="w-4 h-4" />
-                  Programming Language
-                </Label>
-                <div className="flex items-center gap-3">
-                  <CardDescription className="text-gray-400">
-                    {isConnected ? (
-                      <span className="text-green-400">🟢 Connected</span>
-                    ) : (
-                      <span className="text-red-400">🔴 Disconnected</span>
-                    )}
-                  </CardDescription>
-                </div>
+          {/* LEFT COLUMN: Editor Area */}
+          <div className="flex flex-col gap-3 sm:gap-4 h-full min-h-0 overflow-hidden">
+
+            {/* Header: Title & Language Selector */}
+            <div className="flex items-center justify-between bg-gray-900 border border-slate-700 p-2 sm:p-3 rounded-lg shadow-sm flex-shrink-0">
+              <div className="flex items-center gap-2 px-1 sm:px-2">
+                <Link to={"/"} className="flex items-center gap-2 font-bold text-lg sm:text-xl">
+                  <div className="w-7 h-7 sm:w-8 sm:h-8 bg-blue-500 rounded flex items-center justify-center text-white font-mono">
+                    {"{"}
+                  </div>
+                  <span className="text-white">DockExec</span>
+                </Link>
               </div>
 
-
-              <Select value={language} onValueChange={setLanguage}>
-                <SelectTrigger className="bg-gray-800 border-gray-700 text-gray-100">
-                  <SelectValue placeholder="Select language" />
-                </SelectTrigger>
-                <SelectContent className="bg-gray-800 border-gray-700">
-                  {languageOptions.map((lang) => (
-                    <SelectItem
-                      key={lang.value}
-                      value={lang.value}
-                      className="text-gray-100 hover:bg-gray-700"
-                    >
-                      {lang.icon} {lang.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Code Editor */}
-            <div className="space-y-2">
-              <Label className="text-sm font-medium text-gray-300 flex items-center gap-2">
-                <Code2 className="w-4 h-4" /> Source Code
-              </Label>
-              <div className="border border-gray-700 rounded-lg overflow-hidden">
-                <Editor
-                  height="400px"
-                  language={language === "go" ? "go" : language}
-                  theme="vs-dark"
-                  value={code}
-                  onChange={setCode}
-                  options={{
-                    automaticLayout: true,
-                    fontSize: 14,
-                    minimap: { enabled: false },
-                    tabSize: 2,
-                    scrollBeyondLastLine: false,
-                    wordWrap: "on",
-                  }}
-                />
+              <div className="flex items-center gap-2">
+                <Select value={language} onValueChange={setLanguage}>
+                  <SelectTrigger className="w-[140px] sm:w-[180px] h-8 sm:h-9 bg-gray-800 border-gray-700 text-white placeholder-gray-500 focus:ring-0 focus:border-blue-500 rounded-lg">
+                    <SelectValue placeholder="Select language" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-gray-800 border-gray-700">
+                    {languageOptions.map((lang) => (
+                      <SelectItem
+                        key={lang.value}
+                        value={lang.value}
+                        className="text-gray-100 focus:bg-gray-700 focus:text-white cursor-pointer"
+                      >
+                        <span className="flex items-center gap-2">
+                          <span className="text-sm">{lang.icon}</span>
+                          {lang.label}
+                        </span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
 
-            {/* Console Output */}
-            <div
-              className="mt-4 border border-gray-700 rounded-lg bg-gray-800/70 text-gray-100 font-mono text-sm p-3 h-60 overflow-y-auto whitespace-pre-wrap"
-              ref={consoleRef}
-            >
-              {/* 1. Idle / just-loaded / after reset */}
-              {lines.length === 0 && !mutation.isPending && !mutation.isSuccess && (
-                <p className="text-gray-600">Press **Run Code** to see the output.</p>
-              )}
+            <div className="flex-1 border border-slate-700 rounded-lg overflow-hidden bg-[#1e1e1e] shadow-xl relative group min-h-0">
+              <div className="absolute top-4 right-4 z-10 flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                <div className="w-3 h-3 rounded-full bg-red-500/20 border border-red-500/50"></div>
+                <div className="w-3 h-3 rounded-full bg-yellow-500/20 border border-yellow-500/50"></div>
+                <div className="w-3 h-3 rounded-full bg-green-500/20 border border-green-500/50"></div>
+              </div>
 
-              {/* 2. Waiting for the backend (after submit) */}
-              {mutation.isPending && (
-                <p className="text-gray-500 animate-pulse">
-                  Waiting for output...
-                </p>
-              )}
-
-              {/* 3. Real output (success / error / blocked) */}
-              {lines.length > 0 && (
-                <>
-                  {lines.map((line, i) => (
-                    <div key={i} className="leading-5">
-                      {line}
-                    </div>
-                  ))}
-
-                  {duration && (
-                    <div className="mt-2 text-xs text-green-400 border-t border-gray-700 pt-2 flex items-center gap-1">
-                      <Timer className="w-4 h-4" />
-                      Executed in {duration}s
-                    </div>
-                  )}
-                </>
-              )}
+              <Editor
+                height="100%"
+                language={language === "go" ? "go" : language}
+                theme="vs-dark"
+                value={code}
+                onChange={setCode}
+                options={{
+                  automaticLayout: true,
+                  fontSize: 14,
+                  minimap: { enabled: false },
+                  tabSize: 2,
+                  scrollBeyondLastLine: false,
+                  wordWrap: "on",
+                  padding: { top: 20 },
+                  fontFamily: "var(--font-mono)",
+                }}
+              />
             </div>
 
-            {/* Buttons */}
-            <div className="flex gap-3">
+            {/* Action Buttons */}
+            <div className="flex gap-3 sm:gap-4 flex-shrink-0">
               <Button
-                type="submit"
-                className="flex-1 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-semibold py-6 rounded-lg transition-all duration-200 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
+                onClick={handleSubmit}
+                className="flex-1 h-11 sm:h-12 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 text-white font-semibold rounded-lg shadow-lg hover:shadow-blue-500/20 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                 disabled={mutation.isPending}
               >
                 {mutation.isPending ? (
                   <>
                     <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                    Executing...
+                    Running...
                   </>
                 ) : (
                   <>
-                    <Play className="w-5 h-5 mr-2" />
+                    <Play className="w-5 h-5 mr-2 fill-current" />
                     Run Code
                   </>
                 )}
@@ -347,15 +321,88 @@ export default function WriteCode() {
                   setLines([]);
                   setDuration(null);
                 }}
-                className="px-6 bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-750 hover:text-gray-100"
+                className="px-5 sm:px-6 h-11 sm:h-12 bg-gray-900 border-gray-700 text-slate-400 hover:text-white hover:border-slate-500 hover:bg-gray-800 rounded-lg transition-colors"
                 disabled={mutation.isPending}
               >
-                Reset
+                <RotateCcw className="w-5 h-5" />
               </Button>
             </div>
-          </form>
-        </CardContent>
-      </Card>
+          </div>
+
+          {/* --- RIGHT COLUMN: Console Output --- */}
+          <div className="flex flex-col gap-3 sm:gap-4 h-full min-h-0 overflow-hidden">
+
+            {/* Console Header */}
+            <div className="flex items-center justify-between bg-gray-900 border border-slate-700 p-2 sm:p-3 rounded-lg shadow-sm flex-shrink-0">
+              <div className="flex items-center gap-2 px-1 sm:px-2">
+                <Terminal className="w-5 h-5 text-green-500" />
+                <span className="font-semibold text-white tracking-wide">Output</span>
+              </div>
+
+              {/* Status Indicators */}
+              <div className="flex items-center gap-3 sm:gap-4 text-sm">
+                {duration && (
+                  <div className="flex items-center gap-1.5 text-green-400 bg-green-400/10 px-2 sm:px-3 py-1 rounded-full border border-green-400/20">
+                    <Timer className="w-3.5 h-3.5" />
+                    <span className="font-mono text-xs">{duration}s</span>
+                  </div>
+                )}
+                <div className="flex items-center gap-1.5 text-slate-500">
+                  <Cpu className="w-4 h-4" />
+                  <span className="text-xs font-medium hidden sm:inline">READY</span>
+                </div>
+              </div>
+            </div>
+
+            <div
+              className="flex-1 bg-gray-900 border border-slate-800 rounded-lg p-3 sm:p-4 font-mono text-xs sm:text-sm overflow-y-auto shadow-inner relative min-h-0"
+              ref={consoleRef}
+              style={{ maxHeight: '100%' }}
+            >
+              {lines.length === 0 && !mutation.isPending && !mutation.isSuccess && (
+                <div className="h-full flex flex-col items-center justify-center text-slate-600 gap-3 opacity-50">
+                  <Terminal className="w-12 h-12 stroke-1" />
+                  <p>Run code to see output...</p>
+                </div>
+              )}
+
+              {mutation.isPending && (
+                <div className="h-full flex flex-col items-center justify-center text-slate-500 gap-3">
+                  <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
+                  <p className="animate-pulse">Compiling and executing...</p>
+                </div>
+              )}
+
+              {/* Actual Output */}
+              <div className="space-y-1 overflow-y-auto">
+                {lines.map((line, i) => (
+                  <div key={i} className="break-words text-slate-300 border-l-2 border-transparent hover:border-slate-700 pl-2 -ml-2 transition-colors whitespace-pre-wrap">
+                    {line}
+                  </div>
+                ))}
+
+                {/* End of execution marker */}
+                {lines.length > 0 && (
+                  <div className="mt-4 pt-4 border-t border-dashed border-gray-800 text-xs text-slate-600 flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                    Execution finished
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="h-10 sm:h-12 bg-gray-900/50 border border-slate-800 rounded-lg flex items-center px-3 sm:px-4 text-xs text-slate-500 justify-between flex-shrink-0">
+              <span>Console Ready</span>
+              <span className="flex items-center gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>
+                Connected to Server
+              </span>
+            </div>
+
+          </div>
+
+        </div>
+      </main>
     </div>
   );
 }

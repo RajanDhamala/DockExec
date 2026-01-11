@@ -20,18 +20,20 @@ const fetchProblemDetails = async (id) => {
 };
 
 const getUserCode = async ({ testCaseId, problemId }) => {
-  const { data } = await axios.get(`http://localhost:8000/code/getUrCode/${testCaseId}/${problemId}`, {
-    withCredentials: true
-  })
-  return data.data
-}
-
+  const { data } = await axios.get(
+    `http://localhost:8000/code/getUrCode/${testCaseId}/${problemId}`,
+    { withCredentials: true }
+  );
+  const res = data.data;
+  return res;
+};
 
 const fetchSubmissionData = async (problemid) => {
   const data = await axios.get(`http://localhost:8000/code/submissions/${problemid}`, {
     withCredentials: true
   })
-  return data.data.data
+  const res = data.data.data
+  return res
 }
 
 // Test Results Popup Component
@@ -721,13 +723,72 @@ export default function LeetCode() {
   const [isSaving, setIsSaving] = useState(false);
 
 
-  const { socket, initSocket, isConnected, clientId } = useSocketStore();
+  const { socket, initSocket, getSocket, isConnected } = useSocketStore();
   const { currentUser } = useUserStore()
   // Initialize socket
   useEffect(() => {
     initSocket();
     return () => socket?.disconnect();
   }, []);
+
+  const handleAlltestCases = (data) => {
+    setTestResults(prev => {
+      const filtered = prev.filter(r => r.testCaseNumber !== data.testCaseNumber);
+      const updated = [...filtered, data].sort((a, b) => a.testCaseNumber - b.testCaseNumber).slice(0, 4);
+
+      setConsoleOutput(prevOutput => [...prevOutput, data.actualOutput || data.output]);
+
+      return updated;
+    });
+
+    if (data.testCaseNumber === data.totalTestCases) {
+      setAllTestsCompleted(true);
+      setIsRunning(false);
+    }
+
+    setShowPopup(true);
+    if (window.innerWidth >= 1024) setShowTestResults(true);
+  };
+
+
+  const mapApiResultToWsEvents = ({ apiRes, socketId }) => {
+    const {
+      _id: jobId,
+      testCases = [],
+      language,
+      problemId,
+      userId
+    } = apiRes;
+
+    const totalTestCases = testCases.length;
+
+    return testCases.map(tc => ({
+      event: "all_test_result",
+
+      jobId,
+      socketId: "demobabu",
+
+      testCaseId: tc.caseId,
+      testCaseNumber: tc.testCaseNumber,
+      totalTestCases,
+
+      input: tc.input,
+      expected: tc.expectedOutput,
+      actualOutput: tc.userOutput,
+
+      duration: tc.duration,
+      passed: tc.isPassed,
+
+      language,
+      problemId,
+      userId: currentUser.id,
+
+      status: "success",
+      timestamp: tc.executedAt
+        ? new Date(tc.executedAt).toISOString()
+        : new Date().toISOString()
+    }));
+  };
 
   // Fetch all problems
   const { data: problems = [] } = useQuery({
@@ -757,10 +818,18 @@ export default function LeetCode() {
     error,
   } = useMutation({
     mutationFn: getUserCode,
+
     onSuccess: (data, variables) => {
-      // preserve latest fetched code so the language/template effect does not overwrite it
+      setIsRunning(true);
       const nextLanguage = data.language || variables?.language || language;
       const fromProblem = variables?.problemId || currentProblemId;
+
+      // Map API -> WS-like events
+      const wsEvents = mapApiResultToWsEvents({
+        apiRes: data,
+        socketId: socket.id
+      });
+
       setFetchedUserCode({
         code: data.code,
         language: nextLanguage,
@@ -769,11 +838,20 @@ export default function LeetCode() {
 
       setLanguage(nextLanguage);
       setCode(data.code || "");
+
       if (fromProblem && nextLanguage) {
         const key = getLocalKey(fromProblem, nextLanguage);
         localStorage.setItem(key, JSON.stringify(data.code || ""));
       }
+
+      // 2️⃣ Stream test case results sequentially
+      wsEvents.forEach((event, index) => {
+        setTimeout(() => {
+          handleAlltestCases(event);
+        }, index * 500); // 0.5s per test case
+      });
     }
+
   });
 
   const saveDraftMutation = useMutation({
@@ -851,8 +929,6 @@ export default function LeetCode() {
       toast.success("Loaded from local save");
     }
   }, [currentProblem, currentProblemId, language, fetchedUserCode]);
-
-
   const guardedSave = (problemId, codeVal, langVal) => {
     if (!problemId || !langVal) return;
 
@@ -884,7 +960,6 @@ export default function LeetCode() {
   // Socket event handlers - ADD BLOCKED RESULT HANDLER
   useEffect(() => {
     if (!socket) return;
-
     const handleAlltestCases = (data) => {
       console.log("test result executed", data);
 
@@ -992,29 +1067,53 @@ export default function LeetCode() {
   };
 
   const runCode = async () => {
+    let sock = socket;
+
+    if (!sock || !isConnected) {
+      console.log("Socket not connected, waiting for connection...");
+      sock = await getSocket();
+      if (!sock) {
+        console.error("Could not connect to socket, aborting run");
+        setIsRunning(false);
+        return;
+      }
+    }
     setIsRunning(true);
     setShowTestResults(false);
     setShowPopup(false);
     setConsoleOutput([]);
     setExecutionData(null); // Reset execution data
 
+
     const posts = await axios.post("http://localhost:8000/code/testPrint", {
       code: code,
       language: language,
       problemId: currentProblemId,
-      socketId: socket.id
+      socketId: sock.id
     }, { withCredentials: true });
 
     console.log("res form server", posts.data);
   };
 
   const submitCode = async () => {
+    let sock = socket;
+
+    if (!sock || !isConnected) {
+      console.log("Socket not connected, waiting for connection...");
+      sock = await getSocket();
+      if (!sock) {
+        console.error("Could not connect to socket, aborting run");
+        setIsRunning(false);
+        return;
+      }
+    }
     setIsRunning(true);
     setTestResults([]);
     setAllTestsCompleted(false);
     setCurrentJobId(null);
     setConsoleOutput([]);
     setExecutionData(null); // Reset execution data
+
 
     // Show appropriate UI based on screen size
     if (window.innerWidth >= 1024) {
@@ -1026,7 +1125,7 @@ export default function LeetCode() {
       code: code,
       language: language,
       problemId: currentProblemId,
-      socketId: socket.id
+      socketId: sock.id
     }, { withCredentials: true });
 
     console.log("res form server", posts.data);
@@ -1099,13 +1198,12 @@ export default function LeetCode() {
             <ConsolePanel
               output={consoleOutput}
               isRunning={isRunning}
-              executionData={executionData} // PASS execution data to console
+              executionData={executionData}
             />
           )}
         </div>
       </div>
 
-      {/* Popup for all screen sizes */}
       <TestResultsPopup
         testResults={testResults}
         allTestsCompleted={allTestsCompleted}
