@@ -1,7 +1,7 @@
 import { encoding_for_model } from "tiktoken";
 import { RedisClient } from "../Utils/RedisClient.js";
 import TokenQuota from "../Schemas/TokenQuotaSchema.js";
-import { getRabbit } from "../Utils/ConnectRabbit.js";
+
 const countTokens = (text) => {
   try {
     const enc = encoding_for_model("gpt-3.5-turbo");
@@ -61,17 +61,17 @@ const countTokenMiddle = async (req, res, next) => {
       });
     }
 
-    const newTokenUsed = await RedisClient?.hIncrBy(key, "tokenUsed", requestTokens);
+    // const newTokenUsed = await RedisClient?.hIncrBy(key, "tokenUsed", requestTokens);
     const objectSchema = {
       userId: req.user.id,
       tokenConsumed: requestTokens,
       endpoint: req.route.path,
       createdAt: new Date()
     }
-    const RabbitClient = await getRabbit()
-    await RabbitClient.sendToQueue("logQueue", Buffer.from(JSON.stringify(objectSchema)), { persistent: true });
-    console.log("rabbit message pushed")
-    await RedisClient.sAdd("dirty_users", req.user.id); // mark user as updated
+    // const RabbitClient = await getRabbit()
+    // await RabbitClient.sendToQueue("logQueue", Buffer.from(JSON.stringify(objectSchema)), { persistent: true });
+    // console.log("rabbit message pushed")
+    // await RedisClient.sAdd("dirty_users", req.user.id); // mark user as updated
     req.tokenData = { monthlyLimit, tokenUsed: tokenUsed + requestTokens };
     req.tokenCount = requestTokens;
 

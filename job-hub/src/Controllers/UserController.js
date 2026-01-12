@@ -175,7 +175,13 @@ const UpdateProfile = asyncHandler(async (req, res) => {
 
 const getYourLocation = asyncHandler(async (req, res) => {
   const user = req.user
-  const userLocation = await UserModel.findOne({ _id: user.id }).select("location.coordinates")
+  let userLocation
+  try {
+    userLocation = await UserModel.findOne({ _id: user.id }).select("location.coordinates")
+  } catch (err) {
+    console.log("faild to read user location", err)
+    return res.send("errir")
+  }
   if (!userLocation) throw new ApiError(400, null, "user not found")
   if (!userLocation.location.coordinates) throw new ApiError(400, null, "coordinated undefined")
   return res.send(new ApiResponse(200, "successfully fetched user coordinates", userLocation))

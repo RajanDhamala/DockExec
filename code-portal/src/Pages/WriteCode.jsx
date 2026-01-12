@@ -4,6 +4,7 @@ import { useMutation } from "@tanstack/react-query";
 import axios from "axios";
 import useSocketStore from "@/ZustandStore/SocketStore";
 import { Button } from "@/components/ui/button";
+import { v4 as uuidv4 } from "uuid";
 import {
   Select,
   SelectContent,
@@ -189,10 +190,16 @@ export default function WriteCode() {
           return;
         }
       }
+      const idempotent = uuidv4();
       const res = await axios.post(
         "http://localhost:8000/api/exec",
         { code, language, clientId, "socketId": sock.id },
-        { withCredentials: true }
+        {
+          withCredentials: true,
+          headers: {
+            "Idempotency-Key": idempotent
+          }
+        }
       );
       return res.data;
     },

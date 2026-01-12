@@ -1,5 +1,6 @@
 
 
+import { v4 as uuidv4 } from "uuid";
 import { useState, useEffect, useMemo } from "react"
 import {
   Workflow,
@@ -120,11 +121,16 @@ export default function Overview() {
       return;
     }
     console.log("Socket ID:", socket.id);
-
+    const idempotent = uuidv4()
     try {
       const { data } = await axios.get(
         `http://localhost:8000/profile/reRunrecentExe/${runId}/${socket.id}`,
-        { withCredentials: true }
+        {
+          withCredentials: true,
+          headers: {
+            "Idempotency-Key": idempotent
+          }
+        }
       );
       toast.success("Successfully re-run code");
       console.log("Successfully re-run code, jobId:", data.data);

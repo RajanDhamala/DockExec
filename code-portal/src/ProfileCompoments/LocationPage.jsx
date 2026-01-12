@@ -56,42 +56,57 @@ function DraggableMarker({ position, onDrag }) {
   );
 }
 
-// --- Fetch user coordinates ---
+
 const fetchUserCoordinates = async () => {
-  const res = await axios.get("http://localhost:8000/users/urCoordinates", {
-    withCredentials: true,
-  });
-  const coords = res.data?.data?.location?.coordinates;
-  if (!coords) throw new Error("User coordinates not found");
-  // API returns [lng, lat] → convert to {lat, lng}
-  return { lat: coords[1], lng: coords[0] };
+  try {
+    const res = await axios.get("http://localhost:8000/users/urCoordinates", {
+      withCredentials: true,
+      headers: { Accept: "application/json" }, // ask for JSON
+    });
+
+    const coords = res.data?.data?.location?.coordinates;
+    if (!coords || coords.length !== 2 || coords.some((c) => c == null)) {
+      return { lat: 27.7172, lng: 85.3240 }
+    }
+
+    return { lat: coords[1], lng: coords[0] };
+  } catch (err) {
+    // Throw to make react-query call onError
+    //
+    //
+    return { lat: 27.7172, lng: 85.3240 }
+    throw new Error(err?.response?.data?.message || err.message || "Failed to fetch coordinates");
+  }
 };
 
-// --- Main component ---
+
 const LocationDialog = ({ open, onClose }) => {
+  const fallbackPos = { lat: 27.7172, lng: 85.3240 }; // Kathmandu or anywhere
+
   const [markerPos, setMarkerPos] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(false);
   const [searching, setSearching] = useState(false);
 
-  // --- React Query ---
   const { data, isLoading } = useQuery({
     queryKey: ["userCoordinates"],
     queryFn: fetchUserCoordinates,
     enabled: open,
     retry: false,
     onSuccess: (coords) => setMarkerPos(coords),
-    onError: (err) => toast.error(err.message || "Failed to fetch coordinates"),
+    onError: (err) => {
+      console.log("i can see error btw")
+      setMarkerPos({ lat: 27.7172, lng: 85.3240 }); // Kathmandu, for example
+      toast("No saved location found. Please select one.");
+    }
   });
 
   useEffect(() => {
-    // update markerPos when API returns
     if (data) setMarkerPos(data);
   }, [data]);
 
   if (!open) return null;
 
-  // --- Search using Nominatim ---
   const handleSearch = async (e) => {
     e.preventDefault();
     if (!searchQuery.trim()) return;
@@ -112,7 +127,6 @@ const LocationDialog = ({ open, onClose }) => {
     }
   };
 
-  // --- GPS logic ---
   const handleUseMyLocation = () => {
     setLoading(true);
     if (!navigator.geolocation) {
@@ -134,7 +148,6 @@ const LocationDialog = ({ open, onClose }) => {
     );
   };
 
-  // --- Confirm & Save logic ---
   const handleConfirm = async () => {
     if (!markerPos) return;
     setLoading(true);

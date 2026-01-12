@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { v4 as uuidv4 } from "uuid";
 import Editor from "@monaco-editor/react";
 import { Play, Upload, RotateCcw, Code2, CheckCircle2, Clock, BarChart3, X, AlertCircle, XCircle, ChevronRight } from "lucide-react";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -855,8 +856,11 @@ export default function LeetCode() {
   });
 
   const saveDraftMutation = useMutation({
-    mutationFn: ({ problemId, language, code }) =>
-      axios.post("http://localhost:8000/code/saveDraft", { problemId, language, code }, { withCredentials: true }),
+    mutationFn: ({ problemId, language, code }) => {
+
+      const impotent = uuidv4()
+      axios.post("http://localhost:8000/code/saveDraft", { problemId, language, code, "key": impotent }, { withCredentials: true })
+    },
     onMutate: () => setIsSaving(true),
     onSuccess: () => {
       toast.success("Saved to DB");
@@ -1084,13 +1088,19 @@ export default function LeetCode() {
     setConsoleOutput([]);
     setExecutionData(null); // Reset execution data
 
-
+    const idempotent = uuidv4()
     const posts = await axios.post("http://localhost:8000/code/testPrint", {
       code: code,
       language: language,
       problemId: currentProblemId,
-      socketId: sock.id
-    }, { withCredentials: true });
+      socketId: sock.id,
+    }, {
+      withCredentials: true,
+      headers: {
+        "Idempotency-Key": idempotent
+      }
+    }
+    );
 
     console.log("res form server", posts.data);
   };
@@ -1120,13 +1130,18 @@ export default function LeetCode() {
       setShowTestResults(true);
     }
     setShowPopup(true);
-
+    const idempotent = uuidv4()
     const posts = await axios.post("http://localhost:8000/code/Alltest_Cases", {
       code: code,
       language: language,
       problemId: currentProblemId,
-      socketId: sock.id
-    }, { withCredentials: true });
+      socketId: sock.id,
+    }, {
+      withCredentials: true,
+      headers: {
+        "Idempotency-Key": idempotent
+      }
+    });
 
     console.log("res form server", posts.data);
   };

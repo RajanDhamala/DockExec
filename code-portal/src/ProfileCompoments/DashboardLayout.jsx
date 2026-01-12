@@ -6,18 +6,14 @@ import {
   Settings,
   Menu,
   X,
-  Search,
   Sun,
   Moon,
-  Bell,
-  ArrowRight,
   ChevronLeft,
   ChevronRight,
   DollarSign,
   SlidersHorizontal
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -105,14 +101,6 @@ export function DashboardLayout() {
         </div>
 
         <div className="flex items-center gap-2 md:gap-4">
-          {/* Search (Desktop Header) */}
-          <div className="relative hidden md:block">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-            <Input
-              placeholder="Search workflows, logs..."
-              className="pl-10 w-64 lg:w-80 bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 dark:text-gray-200 focus:bg-white dark:focus:bg-gray-800"
-            />
-          </div>
 
           <Button
             variant="ghost"
@@ -123,13 +111,6 @@ export function DashboardLayout() {
             {isDarkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
           </Button>
 
-          {/* Notifications */}
-          <Button variant="ghost" size="icon" className="relative dark:text-gray-200">
-            <Bell className="w-4 h-4" />
-            <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full"></span>
-          </Button>
-
-          {/* User Menu */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon" className="rounded-full">
@@ -157,7 +138,6 @@ export function DashboardLayout() {
       </header>
 
       <div className="flex relative">
-        {/* Mobile Sidebar Overlay */}
         {isSidebarOpen && (
           <div
             className="fixed inset-0 bg-black/50 z-20 md:hidden"
@@ -177,7 +157,6 @@ export function DashboardLayout() {
             w-64 
           `}
         >
-          {/* Desktop Toggle Button */}
           <div className="hidden md:flex justify-end p-2 border-b border-transparent">
             <Button
               variant="ghost"
@@ -221,7 +200,6 @@ export function DashboardLayout() {
           `}
                     />
 
-                    {/*  ALWAYS SHOW TEXT ON MOBILE */}
                     {(!effectiveCollapsed || isMobile) && (
                       <span className="whitespace-nowrap">{item.name}</span>
                     )}
@@ -233,7 +211,6 @@ export function DashboardLayout() {
           </div>
         </aside>
 
-        {/* Main Content */}
         <main className="flex-1 p-4 md:p-8 bg-gray-50 dark:bg-gray-950 min-h-[calc(100vh-4rem)] w-full overflow-x-hidden text-gray-900 dark:text-gray-100 transition-colors duration-200">
           <Outlet />
         </main>

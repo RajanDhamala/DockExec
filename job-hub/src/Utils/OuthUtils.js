@@ -2,8 +2,11 @@
 import User from "../Schemas/UserSchema.js";
 import asyncHandler from "../Utils/AsyncHandler.js";
 import { CreateAccessToken, CreateRefreshToken } from "./Authutils.js";
-
+import { getRabbit } from "./ConnectRabbit.js";
 import pushrecentactivity from "./UtilsRecentActivity.js";
+
+
+const RabbitClient = await getRabbit()
 
 const setAuthCookies = (res, user) => {
   const accessToken = CreateAccessToken(user._id, user.email, user.fullname);
@@ -29,20 +32,11 @@ const loginOrLinkUser = asyncHandler(async (data, res, providerField) => {
   const providerId = data.userData.id;
 
   let user = await User.findOne({ [providerField]: providerId });
-  const activity = {
-    title: `${providerField} Login haai 32`,
-    description: "Just now logged in",
-    status: "success",
-    browserMeta: {}
-  };
-
 
   if (!user) {
     user = await User.findOne({ email: data.email });
 
     if (user) {
-
-      await pushrecentactivity(user._id, activity);
       user[providerField] = providerId;
       user.avatar = user.avatar || data.userData.avatar_url;
       user.fullname = user.fullname || data.userData.name;
@@ -60,6 +54,17 @@ const loginOrLinkUser = asyncHandler(async (data, res, providerField) => {
   }
 
   setAuthCookies(res, user);
+  const activity = {
+    userId: user._id,
+    activity: {
+      title: `${providerField} Login haai`,
+      description: "Just now logged in",
+      status: "success",
+      browserMeta: {},
+      atTime: Date.now()
+    }
+  };
+  await RabbitClient.sendToQueue("Activity_Logs", Buffer.from(JSON.stringify(activity)), { persistent: true })
 
   return res.redirect(process.env.FRONTEND_URI || "http://localhost:5173/");
 });

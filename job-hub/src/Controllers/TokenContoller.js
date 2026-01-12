@@ -15,16 +15,9 @@ const getUrToken = asyncHandler(async (req, res) => {
 
   if (Object.keys(data).length === 0) {
     let isAvailable = await TokenQuota.findOne({ userId: user.id });
-    await RedisClient.hSet(key, {
-      monthlyLimit: isAvailable.monthlyLimit.toString(),
-      tokenUsed: isAvailable.tokenUsed.toString(),
-      cycleStartsAt: isAvailable.cycleStartsAt.toISOString(),
-      cycleEndsAt: isAvailable.cycleEndsAt.toISOString()
-    });
-    await RedisClient.expire(key, 30 * 24 * 60 * 60);
-
     if (!isAvailable) {
       const now = new Date();
+      console.log("user has no token quota started btw")
       const cycleEnd = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
 
       const userdata = await TokenQuota.create({
@@ -36,6 +29,15 @@ const getUrToken = asyncHandler(async (req, res) => {
 
       return res.send(new ApiResponse(200, "User token initialized", userdata));
     }
+    await RedisClient.hSet(key, {
+      monthlyLimit: isAvailable.monthlyLimit.toString(),
+      tokenUsed: isAvailable.tokenUsed.toString(),
+      cycleStartsAt: isAvailable.cycleStartsAt.toISOString(),
+      cycleEndsAt: isAvailable.cycleEndsAt.toISOString()
+    });
+    await RedisClient.expire(key, 30 * 24 * 60 * 60);
+
+
 
     return res.send(new ApiResponse(200, "Fetched user token from DB", isAvailable));
   }

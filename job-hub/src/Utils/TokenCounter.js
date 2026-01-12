@@ -2,6 +2,10 @@
 import { encoding_for_model } from "tiktoken";
 import { RedisClient } from "../Utils/RedisClient.js";
 import TokenQuota from "../Schemas/TokenQuotaSchema.js";
+import { getRabbit } from "./ConnectRabbit.js";
+
+
+const RabbitClient = await getRabbit()
 
 const countTokens = (text) => {
   try {
@@ -18,8 +22,8 @@ const countTokens = (text) => {
 const TokenCounter = async ({ code, language }, usrId) => {
   const key = `tokenQuota:${usrId}`;
   console.log("data recived:", usrId, code)
+  let requestTokens
   try {
-
     let redisData = await RedisClient.hGetAll(key);
     let monthlyLimit, tokenUsed;
 
@@ -45,8 +49,8 @@ const TokenCounter = async ({ code, language }, usrId) => {
       tokenUsed = parseInt(redisData.tokenUsed);
     }
 
-    const requestTokens = countTokens(code);
-
+    requestTokens = countTokens(code);
+    console.log("reques tokens:", requestTokens)
     if (tokenUsed + requestTokens > monthlyLimit) {
       return {
         message: "Token limit exceeded",
@@ -54,9 +58,6 @@ const TokenCounter = async ({ code, language }, usrId) => {
         limit: monthlyLimit,
       };
     }
-
-    await RedisClient.hIncrBy(key, "tokenUsed", requestTokens);
-
     const tokenData = { monthlyLimit, tokenUsed: tokenUsed + requestTokens };
     const tokenCount = requestTokens;
 
@@ -70,5 +71,20 @@ const TokenCounter = async ({ code, language }, usrId) => {
   }
 };
 
-export default TokenCounter;
+const IncreaseToken = async (usrId, tokenLen, route) => {
+  const key = `tokenQuota:${usrId}`;
+  const finalToken = await RedisClient.hIncrBy(key, "tokenUsed", tokenLen);
+  const objectSchema = {
+    userId: usrId,
+    tokenConsumed: tokenLen,
+    endpoint: route,
+    createdAt: new Date()
+  }
+
+  await RabbitClient.sendToQueue("logQueue", Buffer.from(JSON.stringify(objectSchema)), { persistent: true });
+  await RedisClient.sAdd("dirty_users", usrId);
+  return finalToken
+}
+
+export { TokenCounter, IncreaseToken };
 

@@ -2,16 +2,15 @@ import asyncHandler from "../Utils/AsyncHandler.js";
 import Problem from "../Schemas/CodeSchema.js"
 import ApiError from "../Utils/ApiError.js";
 import ApiResponse from "../Utils/ApiResponse.js";
-import { producer } from "../Utils/KafkaProvider.js";
 import { v4 as uuidv4 } from 'uuid';
 import { RedisClient } from "../Utils/RedisClient.js"
 import TestCase from "../Schemas/TestCaseSchema.js";
 import UserCodeDraft from "../Schemas/UserCodeDraft.js";
-import pushrecentactivity from "../Utils/UtilsRecentActivity.js"
 import { getRabbit, RabbitChannel } from "../Utils/ConnectRabbit.js";
+import { IncreaseToken } from "../Utils/TokenCounter.js"
 
 
-const RabbitClient = getRabbit()
+const RabbitClient = await getRabbit()
 const getList = asyncHandler(async (req, res) => {
   const listKey = "getList";
   try {
@@ -60,15 +59,14 @@ const GetData = asyncHandler(async (req, res) => {
 
 const TestPrintCode = asyncHandler(async (req, res) => {
   const { code, language, problemId, socketId } = req.body;
-  const { count } = req.tokenCount
+  const count = req.tokenCount ?? 0
   console.log("father token count:", count)
-  const uuid = uuidv4();
+  const uuid = uuidv4()
   console.log(req.body)
 
   if (!code || !language || !problemId || !socketId) {
     throw new ApiError(400, 'please include type, language, code,  and problemId in request');
   }
-
   const ProblemKey = `problem:${problemId}`;
   let problemData;
 
@@ -104,13 +102,13 @@ const TestPrintCode = asyncHandler(async (req, res) => {
     parameters: problemData.parameters,
     wrapper_type: problemData.wrapper_type
   };
-  let meclient = getRabbit()
   await RabbitChannel.publish(
     "code_exchange",
     "print_test_submission",
     Buffer.from(JSON.stringify(message)),
     { persistent: true }
   );
+  IncreaseToken(req.user.id, count, req.route.path)
   console.log("code produced for running")
 
   return res.send(new ApiResponse(200, 'code sent for running', { uuid, problemData }));
@@ -119,7 +117,7 @@ const TestPrintCode = asyncHandler(async (req, res) => {
 
 const AllTestCases = asyncHandler(async (req, res) => {
   const { code, language, problemId, socketId } = req.body;
-  const uuid = uuidv4();
+  const uuid = uuidv4()
 
   if (!code || !language || !problemId || !socketId) {
     throw new ApiError(400, 'please include  language, code and problemId in request');
@@ -169,6 +167,18 @@ const AllTestCases = asyncHandler(async (req, res) => {
     Buffer.from(JSON.stringify(message)),
     { persistent: true }
   );
+  const activity = {
+    userId: req.user.id,
+    activity: {
+      title: `TestCase execution of ${problemData.title} `,
+
+      description: `saved in :${language}`,
+      status: "success",
+      browserMeta: {},
+      atTime: Date.now()
+    }
+  };
+  await RabbitClient.sendToQueue("Activity_Logs", Buffer.from(JSON.stringify(activity)), { persistent: true })
 
   console.log("code produced for running")
   return res.send(new ApiResponse(200, 'code sent for running', uuid));
@@ -196,6 +206,7 @@ const GetSubmissons = asyncHandler(async (req, res) => {
   }
   submissions = await TestCase.find({ "userId": userId, problemId }).sort({ createdAt: -1 }).limit(10).select(" problemId language createdAt totalTestCases status passedNo");
   await RedisClient.set(submissionsKey, JSON.stringify(submissions), { EX: 120 });
+
   return res.send(new ApiResponse(200, 'fetched submissions data', submissions));
 })
 
@@ -225,6 +236,18 @@ const SaveDraftCode = asyncHandler(async (req, res) => {
     { code: code || "" },
     { upsert: true, new: true, setDefaultsOnInsert: true }
   );
+  const activity = {
+    userId: userId,
+    activity: {
+      title: `Saved ${language} code `,
+
+      description: `saved your ${problemId} code`,
+      status: "success",
+      browserMeta: {},
+      atTime: Date.now()
+    }
+  };
+  await RabbitClient.sendToQueue("Activity_Logs", Buffer.from(JSON.stringify(activity)), { persistent: true })
 
   return res.send(new ApiResponse(200, 'saved code draft', { id: draft._id }));
 });

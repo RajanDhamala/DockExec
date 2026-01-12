@@ -1,5 +1,5 @@
 import asyncHandler from "../Utils/AsyncHandler.js";
-import TokenCounter from "../Utils/TokenCounter.js"
+import { TokenCounter, IncreaseToken } from "../Utils/TokenCounter.js"
 import RawExecution from "../Schemas/RawSchema.js"
 import TrialRunner from "../Schemas/TrialSchema.js"
 import ApiError from "../Utils/ApiError.js";
@@ -33,24 +33,66 @@ const GetProfile = asyncHandler(async (req, res) => {
   }
 })
 
+const REDIS_CACHE_LIMIT = 20; // max items in Redis
+const UI_LIMIT = 5;           // max items for UI
+const CACHE_TTL = 6 * 60 * 60; // 6 hours
+
 const getRecentActivity = asyncHandler(async (req, res) => {
-  const user = req.user
+  const user = req.user;
+  const key = `user:activity:${user.id}`;
 
-  let userActivity = await RecentActivity.findOne(
-    { userId: user.id },
-    {
-      MetaData: { $slice: -5 }
+  try {
+    let cachedLogs = await RedisClient.lRange(key, 0, UI_LIMIT - 1);
+    console.log("cachedLogs:", cachedLogs)
+    let MetaData;
+
+    if (cachedLogs.length > 0) {
+      MetaData = cachedLogs.map(JSON.parse);
+    } else {
+      let userActivity = await RecentActivity.aggregate([
+        { $match: { userId: user.id } },
+        { $unwind: "$MetaData" },
+        { $sort: { "MetaData.atTime": -1 } },
+        { $limit: REDIS_CACHE_LIMIT },
+        { $group: { _id: "$_id", MetaData: { $push: "$MetaData" } } }
+      ]);
+      console.log("from db:", userActivity)
+
+      if (!userActivity) {
+        userActivity = await RecentActivity.create({ userId: user.id });
+        return res.status(200).json(
+          new ApiResponse(200, "No activity logs yet", { userId: user.id, MetaData: [] })
+        );
+      }
+
+      const sortedMeta = userActivity.MetaData
+        .slice()
+        .sort((a, b) => new Date(b.atTime) - new Date(a.atTime));
+
+      MetaData = sortedMeta.slice(0, UI_LIMIT);
+
+      if (sortedMeta.length > 0) {
+        const itemsToCache = sortedMeta.map(a => JSON.stringify(a));
+        await RedisClient.multi()
+          .lPush(key, itemsToCache)
+          .lTrim(key, 0, REDIS_CACHE_LIMIT - 1)
+          .expire(key, CACHE_TTL)
+          .exec();
+      }
     }
-  );
 
-  if (!userActivity) {
-    userActivity = await RecentActivity.create({
-      userId: user.id
-    })
-    throw new ApiError(400, null, "logs not found")
+    return res.status(200).json(
+      new ApiResponse(200, "Successfully fetched activity data", {
+        userId: user.id,
+        MetaData
+      })
+    );
+
+  } catch (err) {
+    console.error("Error fetching recent activity:", err);
+    return res.status(500).json(new ApiResponse(500, "Failed to fetch activity data", null));
   }
-  return res.send(new ApiResponse(200, "succesfully fetched activity data", userActivity))
-})
+});
 
 const ChangePassword = asyncHandler(async (req, res) => {
   const user = req.user
@@ -162,13 +204,13 @@ const reRunRecentExecutions = asyncHandler(async (req, res) => {
   const code = getExecutionData[0].code
 
   const language = getExecutionData[0].language
-
+  let tokenLength
   try {
     const tokenResult = await TokenCounter({ code, language }, user.id);
     if (tokenResult.message) {
       return res.send(new ApiResponse(402, null, tokenResult.message));
     }
-    const tokenLength = tokenResult.tokenCount;
+    tokenLength = tokenResult.tokenCount;
   } catch (err) {
     console.error(err);
     return res.send(new ApiResponse(500, null, "Token validation failed"));
@@ -225,19 +267,11 @@ const reRunRecentExecutions = asyncHandler(async (req, res) => {
     Buffer.from(JSON.stringify(message)),
     { persistent: true }
   );
-
+  await IncreaseToken(user.id, tokenLength, req.route.path)
   console.log("code produced for running")
   return res.send(new ApiResponse(200, "successfully executed oldSubmission", uuid))
 })
 
-// const activity = {
-//   title: `Rerunning the Submisson`,
-//   description: "re execution " + runId,
-//   status: "success",
-//   browserMeta: {}
-// };
-//
-// await pushrecentactivity(user.id, activity);
 
 const LogRecentExecutionsDetail = asyncHandler(async (req, res) => {
   const user = req.user
@@ -271,7 +305,6 @@ const DelRecentExecution = asyncHandler(async (req, res) => {
   );
 })
 
-
 const AvgTestCaseStats = asyncHandler(async (req, res) => {
   const user = req.user;
 
@@ -289,7 +322,7 @@ const AvgTestCaseStats = asyncHandler(async (req, res) => {
       summaryByProblem[problemKey] = {
         problemId: problemKey,
         problemTitle: test.problemId?.title || "Unknown Problem",
-        problemDescription: test.problemId?.description || "", // ← add this
+        problemDescription: test.problemId?.description || "",
         totalAttempts: 0,
         totalPassed: 0,
         totalCases: 0,
@@ -303,22 +336,19 @@ const AvgTestCaseStats = asyncHandler(async (req, res) => {
     summary.totalPassed += test.passedNo || 0;
     summary.totalCases += test.totalTestCases || 0;
 
-    // Take duration from the first test case only
     if (test.testCases && test.testCases.length > 0) {
       summary.totalDuration += test.testCases[0].duration || 0;
     }
 
-    // Keep track of the latest run
     if (!summary.lastRun || new Date(test.createdAt) > new Date(summary.lastRun)) {
       summary.lastRun = test.createdAt;
     }
   });
 
-  // Convert object to array and calculate success rate / avg duration
   const result = Object.values(summaryByProblem).map(s => ({
     problemId: s.problemId,
     problemTitle: s.problemTitle,
-    problemDescription: s.problemDescription, // ← now filled
+    problemDescription: s.problemDescription,
     totalAttempts: s.totalAttempts,
     successRate: s.totalCases ? ((s.totalPassed / s.totalCases) * 100).toFixed(1) + "%" : "0%",
     avgDuration: s.totalAttempts ? (s.totalDuration / s.totalAttempts).toFixed(1) + "s" : "-",
@@ -341,12 +371,13 @@ const viewAvgTestLogs = asyncHandler(async (req, res) => {
   console.log("params:", req.params)
   if (!problemId) throw new ApiError(400, null, "please icnlude problem id in re")
   const data = await TestCase.find({ userId: user.id, problemId: problemId }).select("createdAt language totalTestCases status passedNo code")
-    .sort({ createdAt: -1 })//latest
+    .sort({ createdAt: -1 })
     .limit(6)
     .populate({
       path: "problemId",
       select: "title _id"
     })
+
   if (!data) {
     throw new ApiError(400, null, "no problem logs found")
   }
@@ -367,7 +398,6 @@ const DeleteAvgTestStats = asyncHandler(async (req, res) => {
     problemId: problemId
   });
 
-  // const result = "hello"
   return res.send(
     new ApiResponse(
       200,
@@ -379,24 +409,40 @@ const DeleteAvgTestStats = asyncHandler(async (req, res) => {
   );
 });
 
+
 const RecentPrintRuns = asyncHandler(async (req, res) => {
-  const user = req.user;
+  const user = req.user
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 7;
+  const skip = (page - 1) * limit;
+
+  const totalItems = await TrialRunner.countDocuments({ userId: user.id });
 
   const printData = await TrialRunner.find({ userId: user.id })
     .select("_id status output execution_time language problemid createdAt")
-    .populate({
-      path: "problemid",
-      select: "_id title"
-    }).sort({ createdAt: -1 }).limit(7)
+    .populate({ path: "problemid", select: "_id title" })
+    .sort({ createdAt: -1 })
+    .skip(skip)
+    .limit(limit)
     .lean();
 
-  if (!printData || printData.length === 0) {
-    throw new ApiError(404, null, "user print data not found");
-  }
+  const totalPages = Math.ceil(totalItems / limit);
+  const hasNextPage = page < totalPages;
+  const hasPrevPage = page > 1;
 
-  return res.send(
-    new ApiResponse(200, "fetched print results", printData)
-  );
+  return res.send({
+    status: 200,
+    message: "fetched print results",
+    data: printData,
+    pagination: {
+      page,
+      limit,
+      totalPages,
+      hasNextPage,
+      hasPrevPage,
+      totalItems
+    }
+  });
 });
 
 const viewRecentPrintsOutput = asyncHandler(async (req, res) => {
@@ -416,7 +462,7 @@ const viewRecentPrintsOutput = asyncHandler(async (req, res) => {
       path: "problemid",
       select: "_id title",
     })
-    .sort({ createdAt: -1 }) // latest first
+    .sort({ createdAt: -1 })
     .limit(10)
     .lean();
 
@@ -443,13 +489,14 @@ const reRunRecentPrints = asyncHandler(async (req, res) => {
   const language = currentData.language
   const problemId = currentData._id
   const uuid = uuidv4();
+  let tokenLength
 
   try {
     const tokenResult = await TokenCounter({ code, language }, user.id);
     if (tokenResult.message) {
       return res.send(new ApiResponse(402, null, tokenResult.message));
     }
-    const tokenLength = tokenResult.tokenCount;
+    tokenLength = tokenResult.tokenCount;
     console.log("token length:", tokenLength)
   } catch (err) {
     console.error(err);
@@ -471,6 +518,7 @@ const reRunRecentPrints = asyncHandler(async (req, res) => {
   }
   await RabbitChannel.publish("reRun_printCase", Buffer.from(JSON.stringify(message)))
 
+  await IncreaseToken(user.id, tokenLength, req.route.path)
   return res.send(new ApiResponse(200, 'code sent for running', { uuid }));
 })
 
@@ -481,7 +529,6 @@ const DeletePrints = asyncHandler(async (req, res) => {
     throw new ApiError(400, null, "please inlcude the problemId and runId in req")
   }
   const currentData = await TrialRunner.findOneAndDelete({ _id: runId, userId: user.id })
-  // let currentData = "hello"
   if (!currentData) {
     throw new ApiError(400, null, "no runLog wtih given id found")
   }
@@ -489,14 +536,45 @@ const DeletePrints = asyncHandler(async (req, res) => {
 })
 
 
+
 const ProgrammizExecutions = asyncHandler(async (req, res) => {
   const user = req.user;
-  const programmizData = await RawExecution.find({ userId: user.id }).select("execution_time language status output createdAt _id").sort({ createdAt: -1 }).limit(5)
+
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 5;
+  const skip = (page - 1) * limit;
+
+  const totalItems = await RawExecution.countDocuments({ userId: user.id });
+
+  const programmizData = await RawExecution.find({ userId: user.id })
+    .select("execution_time language status output createdAt _id")
+    .sort({ createdAt: -1 })
+    .skip(skip)
+    .limit(limit)
+    .lean();
+
   if (!programmizData.length) {
-    throw new ApiError(400, null, 'user has no programmiz reuslts')
+    throw new ApiError(404, null, 'user has no programmiz results');
   }
-  return res.send(new ApiResponse(200, 'successfully fethed programmiz results', programmizData))
-})
+
+  const totalPages = Math.ceil(totalItems / limit);
+  const hasNextPage = page < totalPages;
+  const hasPrevPage = page > 1;
+
+  return res.send({
+    status: 200,
+    message: 'successfully fetched programmiz results',
+    data: programmizData,
+    pagination: {
+      page,
+      limit,
+      totalPages,
+      hasNextPage,
+      hasPrevPage,
+      totalItems
+    }
+  });
+});
 
 const viewProgrammizLogs = asyncHandler(async (req, res) => {
   const user = req.user
@@ -525,12 +603,13 @@ const reRunPorgrammiz = asyncHandler(async (req, res) => {
   }
   const code = dbdata.code
   const language = dbdata.language
-
+  let tokenLength
   try {
     const tokenResult = await TokenCounter({ code, language }, user.id);
     if (tokenResult.message) {
       return res.send(new ApiResponse(402, null, tokenResult.message));
     }
+    tokenLength = tokenResult.tokenCount;
   } catch (err) {
     console.error(err);
     return res.send(new ApiResponse(500, null, "Token validation failed"));
@@ -553,14 +632,11 @@ const reRunPorgrammiz = asyncHandler(async (req, res) => {
       { persistent: true }
     );
     console.log("Job produced successfully");
-    await RedisClient.set(`exec:${uuid}`, JSON.stringify({ code, language, id: uuid, socketId, userId: user.id }),
-      { EX: 120 }
-    );
+    await IncreaseToken(user.id, tokenLength, req.route.path)
   } catch (error) {
     console.log("Failed to produce job:", error);
     throw new ApiError(400, "Failed to produce job for code execution");
   }
-
   return res.send(new ApiResponse(200, "successfully re runned execution", uuid))
 
 })

@@ -1,5 +1,4 @@
-
-
+import { v4 as uuidv4 } from "uuid";
 import { useEffect, useMemo, useState } from "react"
 import { Play, Pause, MoreHorizontal, Filter, Search, CheckCircle, XCircle, Zap, RefreshCw, Sun, Moon } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -42,9 +41,10 @@ export default function WorkflowsPage() {
   const { clientId, isConnected, socket } = useSocketStore()
   const [searchQuery, setSearchQuery] = useState("")
   const [activeTab, setActiveTab] = useState("workflows")
-
+  const [currentPage, SetcurrentPage] = useState({ run: 1, programmiz: 1 })
+  const [hasNextPage, SethasNextPage] = useState({ run: true, programmiz: true })
+  const [hasPrevPage, SethasPrevPage] = useState({ run: false, programmiz: false })
   const [fetchedTabs, setFetchedTabs] = useState({ workflows: false, runs: false, templates: false })
-
 
   const openLogs = (type, id) => {
     setDialog({ open: true, type, id });
@@ -111,15 +111,34 @@ export default function WorkflowsPage() {
 
   const fetchRecentPrintRuns = async () => {
     const response = await axios.get(`http://localhost:8000/profile/printCases`, {
+      params: {
+        page: currentPage.run,
+        limit: 7
+      },
       withCredentials: true
     })
+    SethasNextPage(prev => ({
+      ...prev,
+      run: response?.data?.pagination.hasNextPage
+    }))
+
+    console.log("has next page:", response.data.pagination.hasNextPage)
     return response.data.data
   }
 
   const fetchRawExecution = async () => {
     const response = await axios.get(`http://localhost:8000/profile/programmizLogs`, {
+      params: {
+        page: currentPage.programmiz,
+        limit: 7
+      },
       withCredentials: true
     })
+    SethasNextPage(prev => ({
+      ...prev,
+      programmiz: response?.data?.pagination.hasNextPage
+    }))
+    console.log("has next page:", response.data.pagination.hasNextPage)
     return response.data.data
   }
 
@@ -130,9 +149,13 @@ export default function WorkflowsPage() {
       return
     }
     console.log("socket id:", clientId)
+    const idempotent = uuidv4()
     try {
       const data = axios.get(`http://localhost:8000/profile/printCase_id/${runId}/${socket.id}`, {
-        withCredentials: true
+        withCredentials: true,
+        headers: {
+          "Idempotency-Key": idempotent
+        }
       });
       toast.success("code being executed")
       return data.data
@@ -148,9 +171,14 @@ export default function WorkflowsPage() {
       return
     }
     console.log("scoekt id:", clientId)
+
+    const idempotent = uuidv4()
     try {
       const data = axios.get(`http://localhost:8000/profile/reRunProgrammiz/${runId}/${socket.id}`, {
-        withCredentials: true
+        withCredentials: true,
+        headers: {
+          "Idempotency-Key": idempotent
+        }
       });
 
       toast.success("Successfully started reexecution")
@@ -166,12 +194,12 @@ export default function WorkflowsPage() {
     isError: RecentPrintError,
     refetch: refetchRecentPrint,
   } = useQuery({
-    queryKey: ["RecentPrint", "runs"],
+    queryKey: ["RecentPrint", "runs", `${currentPage.run}`],
     queryFn: fetchRecentPrintRuns,
-    enabled: false,
     refetchOnWindowFocus: false,
     refetchOnMount: false,
     staleTime: 5 * 60 * 1000,
+
   })
 
   const {
@@ -246,9 +274,6 @@ export default function WorkflowsPage() {
     const parsed = new Date(date)
     return Number.isNaN(parsed.getTime()) ? "-" : parsed.toLocaleString()
   }
-
-
-
   return (
     <div className="space-y-8 ">
       <LogsDialog
@@ -522,6 +547,8 @@ export default function WorkflowsPage() {
                         </TableRow>
                       ))}
 
+
+
                     {!RecentPrintLoading && RecentPrintError && (
                       <TableRow>
                         <TableCell colSpan={8} className="text-center py-6 text-red-600 dark:text-red-400">
@@ -574,6 +601,7 @@ export default function WorkflowsPage() {
                             </DropdownMenu>
                           </TableCell>
                         </TableRow>
+
                       ))}
 
                     {!RecentPrintLoading && !RecentPrintError && normalizedRecentPrints.length === 0 && (
@@ -585,6 +613,36 @@ export default function WorkflowsPage() {
                     )}
                   </TableBody>
                 </Table>
+                <div className=" flex justify-center gap-x-5">
+                  <Button
+                    variant="outline"
+                    className="gap-2 bg-transparent border-gray-200 text-gray-700 dark:border-slate-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-gray-800"
+                    size="sm"
+                    disabled={currentPage.run == 1}
+                    onClick={() =>
+                      SetcurrentPage(prev => ({
+                        ...prev,
+                        run: prev.run - 1
+                      }))
+                    }
+                  >prev
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="gap-2 bg-transparent border-gray-200 text-gray-700 dark:border-slate-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-gray-800"
+                    size="sm"
+                    disabled={hasNextPage.run == false}
+                    onClick={() =>
+                      SetcurrentPage(prev => ({
+                        ...prev,
+                        run: prev.run + 1
+                      }))
+                    }
+
+                  >Next
+                  </Button>
+
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -703,6 +761,35 @@ export default function WorkflowsPage() {
                     )}
                   </TableBody>
                 </Table>
+                <div className=" flex justify-center gap-x-5">
+                  <Button
+                    variant="outline"
+                    className="gap-2 bg-transparent border-gray-200 text-gray-700 dark:border-slate-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-gray-800"
+                    size="sm"
+                    disabled={currentPage.programmiz == 1}
+                    onClick={() =>
+                      SetcurrentPage(prev => ({
+                        ...prev,
+                        programmiz: prev.programmiz - 1
+                      }))
+                    }
+                  >prev
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="gap-2 bg-transparent border-gray-200 text-gray-700 dark:border-slate-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-gray-800"
+                    size="sm"
+                    disabled={hasNextPage.programmiz == false}
+                    onClick={() =>
+                      SetcurrentPage(prev => ({
+                        ...prev,
+                        programmiz: prev.programmiz + 1
+                      }))
+                    }
+
+                  >Next
+                  </Button>
+                </div>
               </div>
             </CardContent>
           </Card>

@@ -2,17 +2,17 @@ import Router, { response } from "express"
 import AuthUser from "../Middlewares/AuthMiddelware.js"
 import { execCode, migratedb } from "../Controllers/ApiController.js"
 import grpcClient from "../Utils/grpcClient.js"
-
+import { RedisClient } from "../Utils/RedisClient.js"
+import AuthIdemptent from "../Middlewares/IdempotentMiddleware.js"
 import countTokenMiddle from "../Middlewares/TokenCountMiddle.js"
 
 const ApiRouter = Router()
 
 ApiRouter.get("/", (req, res) => {
-
   return res.send("api route is up and running")
 })
 
-ApiRouter.post("/exec", AuthUser, countTokenMiddle, execCode)
+ApiRouter.post("/exec", AuthIdemptent, countTokenMiddle, execCode)
 ApiRouter.get("/db", migratedb)
 ApiRouter.post("/valid", async (req, res) => {
   const { fen, move } = req.body;

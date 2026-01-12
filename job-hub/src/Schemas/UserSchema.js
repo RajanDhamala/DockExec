@@ -1,7 +1,6 @@
 import mongoose from 'mongoose';
 
 const UserSchema = new mongoose.Schema({
-
   email: {
     type: String,
     unique: true,
@@ -24,34 +23,36 @@ const UserSchema = new mongoose.Schema({
     sparse: true,
     index: true,
     unique: true
-  }, googleProviderId: {
+  },
+  googleProviderId: {
     type: String,
     sparse: true,
     index: true,
     unique: true
-  }, avatar: {
+  },
+  avatar: {
     type: String
-  }, dob: {
+  },
+  dob: {
     type: Date
-  }, bio: {
+  },
+  bio: {
     type: String
-  }, plan: {
+  },
+  plan: {
     type: String,
     enum: ["free", "pro"],
-    default: "free",
+    default: "free"
   },
   location: {
     type: {
       type: String,
       enum: ["Point"],
-      required: true,
       default: "Point"
     },
     coordinates: {
       type: [Number],
-      default: undefined,
-      min: [-180, -90],
-      max: [180, 90]
+      default: undefined
     }
   },
   solvedTestCases: [
@@ -59,18 +60,17 @@ const UserSchema = new mongoose.Schema({
       problemId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "Problem"
-      }, submitDate: {
+      },
+      submitDate: {
         type: Date,
-        default: Date.now()
+        default: Date.now
       }
     }
   ]
 }, { timestamps: true });
 
+UserSchema.index({ "location": "2dsphere" }, { sparse: true });
 
-UserSchema.index({ location: "2dsphere" });
 const UserModel = mongoose.model('User', UserSchema);
 
 export default UserModel;
-
-

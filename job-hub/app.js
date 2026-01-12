@@ -43,10 +43,10 @@ app.use(express.urlencoded({ extended: true, limit: "3mb" }));
 
 
 const onGithubSuccess = async (req, res, data) => {
-  loginOrLinkUser(data, res, "githubProviderId")
+  loginOrLinkUser(data, res, "githubProvider")
 };
 const onGoogleSuccess = async (req, res, data) => {
-  loginOrLinkUser(data, res, "googleProviderId")
+  loginOrLinkUser(data, res, "googleProvider")
 };
 const onError = async (req, res, error) => {
   console.error("OAuth failed:", error);

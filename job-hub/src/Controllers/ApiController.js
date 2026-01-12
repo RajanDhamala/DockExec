@@ -1,20 +1,20 @@
 import asyncHandler from "../Utils/AsyncHandler.js";
 import ApiError from "../Utils/ApiError.js";
 import ApiResponse from "../Utils/ApiResponse.js";
-import { producer } from "../Utils/KafkaProvider.js";
-import { v4 as uuidv4 } from 'uuid';
 import Problem from "../Schemas/CodeSchema.js"
 import { RedisClient } from "../Utils/RedisClient.js"
 import { getRabbit, RabbitChannel } from "../Utils/ConnectRabbit.js";
+import { v4 as uuidv4 } from 'uuid';
 
-const RabbitClient = getRabbit()
-
+const RabbitClient = await getRabbit()
 const execCode = asyncHandler(async (req, res) => {
-  const { code, language, socketId } = req.body;
   const user = req.user;
+  const { code, language, socketId } = req.body;
+
   if (!code || !language) {
     throw new ApiError(400, "Include language and code in request");
   }
+
   const uuid = uuidv4()
   try {
     const message = {
@@ -31,9 +31,22 @@ const execCode = asyncHandler(async (req, res) => {
       { persistent: true }
     );
     console.log("Job produced successfully");
+    const activity = {
+      userId: user.id,
+      activity: {
+        title: `programmiz ${language} execution`,
+        description: "Just now executed code",
+        status: "success",
+        browserMeta: {},
+        atTime: Date.now()
+      }
+    };
+    await RabbitClient.sendToQueue("Activity_Logs", Buffer.from(JSON.stringify(activity)), { persistent: true })
+
     await RedisClient.set(`exec:${uuid}`, JSON.stringify({ code, language, id: uuid, socketId, userId: user.id }),
       { EX: 120 }
     );
+
   } catch (error) {
     console.log("Failed to produce job:", error);
     throw new ApiError(400, "Failed to produce job for code execution");
