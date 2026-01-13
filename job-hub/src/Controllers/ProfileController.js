@@ -33,66 +33,81 @@ const GetProfile = asyncHandler(async (req, res) => {
   }
 })
 
-const REDIS_CACHE_LIMIT = 20; // max items in Redis
-const UI_LIMIT = 5;           // max items for UI
-const CACHE_TTL = 6 * 60 * 60; // 6 hours
+const REDIS_CACHE_LIMIT = 20;
+const UI_LIMIT = 5;
+const CACHE_TTL = 6 * 60 * 60;
 
 const getRecentActivity = asyncHandler(async (req, res) => {
   const user = req.user;
   const key = `user:activity:${user.id}`;
 
   try {
-    let cachedLogs = await RedisClient.lRange(key, 0, UI_LIMIT - 1);
-    console.log("cachedLogs:", cachedLogs)
-    let MetaData;
+    // 1️⃣ Redis first
+    const cachedLogs = await RedisClient.lRange(key, 0, UI_LIMIT - 1);
+    console.log("cachedLogs:", cachedLogs);
 
     if (cachedLogs.length > 0) {
-      MetaData = cachedLogs.map(JSON.parse);
-    } else {
-      let userActivity = await RecentActivity.aggregate([
-        { $match: { userId: user.id } },
-        { $unwind: "$MetaData" },
-        { $sort: { "MetaData.atTime": -1 } },
-        { $limit: REDIS_CACHE_LIMIT },
-        { $group: { _id: "$_id", MetaData: { $push: "$MetaData" } } }
-      ]);
-      console.log("from db:", userActivity)
+      return res.status(200).json(
+        new ApiResponse(200, "Fetched from cache", {
+          userId: user.id,
+          MetaData: cachedLogs.map(JSON.parse)
+        })
+      );
+    }
 
-      if (!userActivity) {
-        userActivity = await RecentActivity.create({ userId: user.id });
-        return res.status(200).json(
-          new ApiResponse(200, "No activity logs yet", { userId: user.id, MetaData: [] })
-        );
-      }
+    let activityDoc = await RecentActivity.findOne({ userId: user.id }).lean();
 
-      const sortedMeta = userActivity.MetaData
-        .slice()
-        .sort((a, b) => new Date(b.atTime) - new Date(a.atTime));
+    if (!activityDoc) {
+      activityDoc = await RecentActivity.create({
+        userId: user.id,
+        MetaData: []
+      });
 
-      MetaData = sortedMeta.slice(0, UI_LIMIT);
+      return res.status(200).json(
+        new ApiResponse(200, "No activity logs yet", {
+          userId: user.id,
+          MetaData: []
+        })
+      );
+    }
 
-      if (sortedMeta.length > 0) {
-        const itemsToCache = sortedMeta.map(a => JSON.stringify(a));
-        await RedisClient.multi()
-          .lPush(key, itemsToCache)
-          .lTrim(key, 0, REDIS_CACHE_LIMIT - 1)
-          .expire(key, CACHE_TTL)
-          .exec();
-      }
+    const meta = Array.isArray(activityDoc.MetaData)
+      ? activityDoc.MetaData
+      : [];
+
+    const sortedMeta = meta
+      .slice()
+      .sort((a, b) => new Date(b.atTime) - new Date(a.atTime));
+
+    const uiMeta = sortedMeta.slice(0, UI_LIMIT);
+
+    if (sortedMeta.length > 0) {
+      const itemsToCache = sortedMeta.map(m => JSON.stringify(m));
+
+      await RedisClient
+        .multi()
+        .lPush(key, itemsToCache)
+        .lTrim(key, 0, REDIS_CACHE_LIMIT - 1)
+        .expire(key, CACHE_TTL)
+        .exec();
     }
 
     return res.status(200).json(
-      new ApiResponse(200, "Successfully fetched activity data", {
+      new ApiResponse(200, "Fetched activity successfully", {
         userId: user.id,
-        MetaData
+        MetaData: uiMeta
       })
     );
 
   } catch (err) {
     console.error("Error fetching recent activity:", err);
-    return res.status(500).json(new ApiResponse(500, "Failed to fetch activity data", null));
+    return res
+      .status(500)
+      .json(new ApiResponse(500, "Failed to fetch activity data", null));
   }
 });
+
+
 
 const ChangePassword = asyncHandler(async (req, res) => {
   const user = req.user

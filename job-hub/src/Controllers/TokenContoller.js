@@ -7,43 +7,80 @@ import { RedisClient } from "../Utils/RedisClient.js"
 import mongoose from "mongoose"
 
 
+
 const getUrToken = asyncHandler(async (req, res) => {
   const user = req.user;
   const key = `tokenQuota:${user.id}`;
+  const now = new Date();
 
   let data = await RedisClient.hGetAll(key);
-
-  if (Object.keys(data).length === 0) {
+  if (!data || Object.keys(data).length === 0) {
     let isAvailable = await TokenQuota.findOne({ userId: user.id });
+
     if (!isAvailable) {
-      const now = new Date();
-      console.log("user has no token quota started btw")
+      console.log("user has no token quota started btw");
+
       const cycleEnd = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
 
       const userdata = await TokenQuota.create({
         userId: user.id,
+        tokenUsed: 0,
         cycleStartsAt: now,
         cycleEndsAt: cycleEnd
       });
 
-
-      return res.send(new ApiResponse(200, "User token initialized", userdata));
+      return res.send(
+        new ApiResponse(200, "User token initialized", userdata)
+      );
     }
-    await RedisClient.hSet(key, {
+
+    data = {
       monthlyLimit: isAvailable.monthlyLimit.toString(),
       tokenUsed: isAvailable.tokenUsed.toString(),
       cycleStartsAt: isAvailable.cycleStartsAt.toISOString(),
       cycleEndsAt: isAvailable.cycleEndsAt.toISOString()
-    });
+    };
+
+    await RedisClient.hSet(key, data);
     await RedisClient.expire(key, 30 * 24 * 60 * 60);
 
-
-
-    return res.send(new ApiResponse(200, "Fetched user token from DB", isAvailable));
+    return res.send(
+      new ApiResponse(200, "Fetched user token from DB", isAvailable)
+    );
   }
 
-  return res.send(new ApiResponse(200, "Fetched token data from Redis", data));
+  const cycleEndsAt = new Date(data.cycleEndsAt);
+
+  if (now > cycleEndsAt) {
+    const newCycleEnd = new Date(
+      now.getTime() + 30 * 24 * 60 * 60 * 1000
+    );
+
+    await TokenQuota.findOneAndUpdate(
+      { userId: user.id },
+      {
+        $set: {
+          tokenUsed: 0,
+          cycleStartsAt: now,
+          cycleEndsAt: newCycleEnd,
+          lastResetAt: now
+        }
+      }
+    );
+    await RedisClient.hSet(key, {
+      tokenUsed: "0",
+      cycleStartsAt: now.toISOString(),
+      cycleEndsAt: newCycleEnd.toISOString()
+    });
+    data.tokenUsed = "0";
+    data.cycleStartsAt = now.toISOString();
+    data.cycleEndsAt = newCycleEnd.toISOString();
+  }
+  return res.send(
+    new ApiResponse(200, "Fetched token data from Redis", data)
+  );
 });
+
 
 const getTokenUsageGraph = asyncHandler(async (req, res) => {
   const user = req.user;

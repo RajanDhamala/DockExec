@@ -3,7 +3,7 @@ import User from "../Schemas/UserSchema.js";
 import asyncHandler from "../Utils/AsyncHandler.js";
 import { CreateAccessToken, CreateRefreshToken } from "./Authutils.js";
 import { getRabbit } from "./ConnectRabbit.js";
-import pushrecentactivity from "./UtilsRecentActivity.js";
+import RecentActivity from "../Schemas/RecentActivitySchema.js"
 
 
 const RabbitClient = await getRabbit()

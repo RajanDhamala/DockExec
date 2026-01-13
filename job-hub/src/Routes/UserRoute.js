@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { LoginUser, RegisterUser, LogoutUser, UpdatePoints, ChangeUserAvatar, UpdateProfile, getYourLocation, UpdateUserCoordinates, GeturPoints, getLeaderboard, getUsersNearYou, getUserBasicMetrics, AvgExectionTimeMetrics, exeMetrics, DeleteAccount } from "../Controllers/UserController.js"
+import { LoginUser, RegisterUser, verifyResetToken, LogoutUser, ForgotPassword, UpdatePoints, ChangeUserAvatar, UpdateProfile, getYourLocation, UpdateUserCoordinates, GeturPoints, getLeaderboard, getUsersNearYou, getUserBasicMetrics, AvgExectionTimeMetrics, exeMetrics, DeleteAccount } from "../Controllers/UserController.js"
 import AuthUser from "../Middlewares/AuthMiddelware.js"
 import Whoareu from "../Middlewares/MeMiddle.js";
 import avatarUpload from "../Middlewares/AvatarUpload.js"
@@ -12,6 +12,8 @@ UserRouter.get("/", (req, res) => {
 
 UserRouter.post("/register", RegisterUser)
 UserRouter.post("/login", LoginUser)
+UserRouter.post("/forgot-password", ForgotPassword)
+UserRouter.post("/reset-psd", verifyResetToken)
 UserRouter.get("/logout", AuthUser, LogoutUser)
 UserRouter.get("/points/:problemId/:userId", UpdatePoints)
 UserRouter.get("/me", Whoareu)

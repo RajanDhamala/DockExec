@@ -1,4 +1,5 @@
 import asyncHandler from "../Utils/AsyncHandler.js"
+import crypto from "crypto";
 import LeaderBoard from "../Schemas/LeaderBoardSchema.js"
 import { RedisClient } from "../Utils/RedisClient.js"
 import mongoose from "mongoose"
@@ -11,7 +12,11 @@ import Problem from "../Schemas/CodeSchema.js"
 import TestCase from "../Schemas/TestCaseSchema.js"
 import TrialRunner from "../Schemas/TrialSchema.js"
 import RawExecution from "../Schemas/RawSchema.js"
+import { getRabbit } from "../Utils/ConnectRabbit.js"
+import { v4 as uuidv4 } from 'uuid';
 
+
+const RabbitClient = await getRabbit()
 
 const registerSchema = Joi.object({
   email: Joi.string().email().required(),
@@ -87,6 +92,64 @@ const LoginUser = asyncHandler(async (req, res) => {
     "data": resobj
   })
 });
+
+
+const ForgotPassword = asyncHandler(async (req, res) => {
+  const { email } = req.body
+  if (!email || email == "") {
+    throw new ApiError(400, null, "please innclude the email")
+  }
+  const userExists = await UserModel.findOne({ email: email }).select("password fullname email")
+  console.log(userExists)
+  if (!userExists) {
+    throw new ApiError(404, null, "invalid email")
+  }
+  if (userExists.password == null) {
+    throw new Error(403, "Unauthorized")
+  }
+  const resetToken = crypto.randomBytes(32).toString("hex");
+
+  const data = {
+    fullname: userExists.fullname,
+    email: userExists.email,
+    token: resetToken,
+    ip: req.ip,
+    Timestamps: Date.now(),
+    type: "reset-password"
+  }
+  await RabbitClient.sendToQueue("mail", Buffer.from(JSON.stringify(data)), { persistent: true })
+  return res.send(new ApiResponse(200, "password rest link sent", null))
+})
+
+
+const verifyResetToken = asyncHandler(async (req, res) => {
+  const { token, newPassword } = req.body;
+  if (!token || !newPassword) {
+    throw new ApiError(400, null, "Include token and newPassword in request");
+  }
+  const key = `pwd-reset:${token}`;
+  const redData = await RedisClient.get(key);
+  if (!redData) {
+    throw new ApiError(404, null, "Token expired or invalid");
+  }
+
+  const jsonDatas = JSON.parse(redData);
+  const hashedPassword = await hashPassword(newPassword, 10);
+
+  const updatedUser = await UserModel.findOneAndUpdate(
+    { email: jsonDatas.email },
+    { $set: { password: hashedPassword } },
+    { new: true }
+  );
+
+  if (!updatedUser) {
+    throw new ApiError(404, null, "User not found");
+  }
+  await RedisClient.del(key);
+
+  return res.send(new ApiResponse(200, "Password reset successfully", null));
+});
+
 
 // Logout user
 const LogoutUser = asyncHandler(async (req, res) => {
@@ -596,6 +659,6 @@ const DeleteAccount = asyncHandler(async (req, res) => {
 
 
 export {
-  RegisterUser, LoginUser, LogoutUser, UpdatePoints, ChangeUserAvatar, UpdateProfile, getYourLocation, UpdateUserCoordinates, GeturPoints, getUsersNearYou, getLeaderboard, AvgExectionTimeMetrics, exeMetrics, DeleteAccount, getUserBasicMetrics
+  RegisterUser, LoginUser, ForgotPassword, verifyResetToken, LogoutUser, UpdatePoints, ChangeUserAvatar, UpdateProfile, getYourLocation, UpdateUserCoordinates, GeturPoints, getUsersNearYou, getLeaderboard, AvgExectionTimeMetrics, exeMetrics, DeleteAccount, getUserBasicMetrics
 }
 // 192.168.18.26:29092 ip i want

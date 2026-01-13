@@ -19,14 +19,15 @@ const countTokens = (text) => {
   }
 };
 
+
 const TokenCounter = async ({ code, language }, usrId) => {
   const key = `tokenQuota:${usrId}`;
-  console.log("data recived:", usrId, code)
-  let requestTokens
+  const now = new Date();
+
   try {
     let redisData = await RedisClient.hGetAll(key);
-    let monthlyLimit, tokenUsed;
 
+    let monthlyLimit, tokenUsed, cycleEndsAt;
     if (!redisData || !redisData.monthlyLimit) {
       const dbData = await TokenQuota.findOne({ userId: usrId });
 
@@ -34,23 +35,50 @@ const TokenCounter = async ({ code, language }, usrId) => {
         return { message: "User token quota not found" };
       }
 
+      monthlyLimit = dbData.monthlyLimit;
+      tokenUsed = dbData.tokenUsed;
+      cycleEndsAt = new Date(dbData.cycleEndsAt);
+
       await RedisClient.hSet(key, {
         monthlyLimit: dbData.monthlyLimit.toString(),
         tokenUsed: dbData.tokenUsed.toString(),
-        cycleEndsAt: dbData.cycleEndsAt.toString(),
-        cycleStartsAt: dbData.cycleStartsAt.toString(),
+        cycleEndsAt: dbData.cycleEndsAt.toISOString(),
+        cycleStartsAt: dbData.cycleStartsAt.toISOString(),
       });
       await RedisClient.expire(key, 30 * 24 * 60 * 60);
-
-      monthlyLimit = dbData.monthlyLimit;
-      tokenUsed = dbData.tokenUsed;
     } else {
       monthlyLimit = parseInt(redisData.monthlyLimit);
       tokenUsed = parseInt(redisData.tokenUsed);
+      cycleEndsAt = new Date(redisData.cycleEndsAt);
     }
+    if (now > cycleEndsAt) {
+      const newCycleEnd = new Date(
+        now.getTime() + 30 * 24 * 60 * 60 * 1000
+      );
 
-    requestTokens = countTokens(code);
-    console.log("reques tokens:", requestTokens)
+      await TokenQuota.findOneAndUpdate(
+        { userId: usrId },
+        {
+          $set: {
+            tokenUsed: 0,
+            cycleStartsAt: now,
+            cycleEndsAt: newCycleEnd,
+            lastResetAt: now,
+          },
+        }
+      );
+      await RedisClient.hSet(key, {
+        tokenUsed: "0",
+        cycleStartsAt: now.toISOString(),
+        cycleEndsAt: newCycleEnd.toISOString(),
+      });
+
+      tokenUsed = 0;
+      cycleEndsAt = newCycleEnd;
+    }
+    const requestTokens = countTokens(code);
+    console.log("request tokens:", requestTokens);
+
     if (tokenUsed + requestTokens > monthlyLimit) {
       return {
         message: "Token limit exceeded",
@@ -58,18 +86,19 @@ const TokenCounter = async ({ code, language }, usrId) => {
         limit: monthlyLimit,
       };
     }
-    const tokenData = { monthlyLimit, tokenUsed: tokenUsed + requestTokens };
-    const tokenCount = requestTokens;
-
     return {
-      tokenCount,
-      tokenData,
+      tokenCount: requestTokens,
+      tokenData: {
+        monthlyLimit,
+        tokenUsed: tokenUsed + requestTokens,
+      },
     };
   } catch (err) {
-    console.error("Error in token middleware:", err);
+    console.error("Error in TokenCounter:", err);
     return { message: "token validation failed" };
   }
 };
+
 
 const IncreaseToken = async (usrId, tokenLen, route) => {
   const key = `tokenQuota:${usrId}`;

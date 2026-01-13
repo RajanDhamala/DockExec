@@ -5,6 +5,7 @@ import Problem from "../Schemas/CodeSchema.js"
 import { RedisClient } from "../Utils/RedisClient.js"
 import { getRabbit, RabbitChannel } from "../Utils/ConnectRabbit.js";
 import { v4 as uuidv4 } from 'uuid';
+import { IncreaseToken } from "../Utils/TokenCounter.js";
 
 const RabbitClient = await getRabbit()
 const execCode = asyncHandler(async (req, res) => {
@@ -46,6 +47,8 @@ const execCode = asyncHandler(async (req, res) => {
     await RedisClient.set(`exec:${uuid}`, JSON.stringify({ code, language, id: uuid, socketId, userId: user.id }),
       { EX: 120 }
     );
+
+    await IncreaseToken(req.user.id, req.tokenCount ?? 0, req.route.path)
 
   } catch (error) {
     console.log("Failed to produce job:", error);

@@ -178,6 +178,8 @@ const AllTestCases = asyncHandler(async (req, res) => {
       atTime: Date.now()
     }
   };
+
+  await IncreaseToken(req.user.id, req.tokenCount ?? 0, req.route.path)
   await RabbitClient.sendToQueue("Activity_Logs", Buffer.from(JSON.stringify(activity)), { persistent: true })
 
   console.log("code produced for running")

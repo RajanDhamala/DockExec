@@ -9,6 +9,9 @@ import { Link, useNavigate } from "react-router-dom";
 import { useParams } from "react-router-dom";
 import { Github } from "lucide-react";
 import useUserStore from "@/ZustandStore/UserStore";
+import { useMutation } from "@tanstack/react-query";
+
+
 
 export default function AuthPage() {
   const navigate = useNavigate();
@@ -51,11 +54,37 @@ export default function AuthPage() {
       window.location.href = `http://localhost:8000/auth/github`;
     }
   };
-  const handleForgotPassword = () => {
-    navigate("/forgot-password");
-  };
-  const handleLogin = async () => {
 
+
+  const { mutate: mutatePassword, isLoading } = useMutation(
+
+    {
+      mutationFn:
+        async (email) => {
+          const response = await axios.post("http://localhost:8000/users/forgot-password", { email });
+          return response.data;
+        },
+      onSuccess: (data) => {
+        toast.success("Password reset link sent!");
+        console.log("Reset success:", data);
+      },
+      onError: (error) => {
+        toast.error("Failed to send password reset link");
+        console.error("Reset error:", error);
+      },
+      retry: false
+    }
+  );
+  const handleForgotPassword = () => {
+    if (!email.trim()) {
+      toast.error("Enter your email to reset");
+      return;
+    }
+    mutatePassword(email); // call the mutation
+  };
+
+
+  const handleLogin = async () => {
     setLoading(true);
     try {
       const res = await axios.post(

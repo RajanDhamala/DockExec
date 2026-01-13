@@ -1,8 +1,9 @@
 import amqplib from "amqplib";
+import { handelEmail } from "./src/Utils/HandelEmail.js";
 import ConnectDb from "./src/Utils/ConnectDB.js"
 import dotenv from "dotenv"
 import { LogBulkToken, FlushBuffer, getActiveUsers } from "./src/Utils/LogTokenLogs.js";
-import { connectRedis } from "./src/Utils/ConnectRedis.js";
+import { connectRedis, RedisClient } from "./src/Utils/ConnectRedis.js";
 // import { runLuaScript } from "./src/Utils/LuaRedis.js"
 import { SyncLeaderboard } from "./src/Utils/LeaderBoardSync.js"
 import { InsertLogBuffer, FlushUserActivityBuffer, PushActivity2Redis } from "./src/Utils/ActivityLogs.js"
@@ -21,8 +22,10 @@ const consumeJobs = async () => {
     const channel = await conn.createChannel();
     // setInterval(runLuaScript, 5000)
     await channel.assertQueue("logQueue", { durable: true });
-
     await channel.assertQueue("Activity_Logs", { durable: true });
+    await channel.assertQueue("mail", { durable: true });
+
+    await channel.assertQueue("mail", { durable: true });
     console.log(`Waiting for jobs in queue on:logQueue ..`);
 
     channel.consume(
@@ -49,6 +52,17 @@ const consumeJobs = async () => {
         channel.ack(msg)
       }
     })
+
+    channel.consume("mail", async (msg) => {
+      if (msg !== null) {
+        const job = msg.content.toString();
+        const jsonData = await JSON.parse(job)
+        console.log("mail logs:", jsonData)
+        handelEmail(jsonData, msg, channel)
+
+      }
+    })
+
   } catch (err) {
     console.error("Error consuming jobs:", err);
   }
