@@ -50,8 +50,8 @@ function Footer() {
                 </Link>
               </li>
               <li>
-                <Link to="#" className="hover:text-white transition">
-                  Support
+                <Link to="/feedback" className="hover:text-white transition">
+                  FeedBack
                 </Link>
               </li>
             </ul>

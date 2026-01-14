@@ -11,5 +11,6 @@ export const LazySettingsPage = lazy(() => import("../Pages/SettingsPage.jsx"))
 export const LazyBillingPage = lazy(() => import("../Pages/BillingPage.jsx"))
 export const LazyPrefrencePage = lazy(() => import("../Pages/PrefrencePage.jsx"))
 export const LazyPasswordReset = lazy(() => import("../Pages/PasswordReset.jsx"))
+export const LazyFeedBackPage = lazy(() => import("../templates/FeedbackPage.jsx"))
 
 

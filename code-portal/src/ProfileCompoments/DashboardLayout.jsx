@@ -127,7 +127,7 @@ export function DashboardLayout() {
                 <DropdownMenuItem className="dark:text-gray-200 dark:focus:bg-gray-800">
                   Settings</DropdownMenuItem>
               </Link>
-              <Link to={"/support"}>
+              <Link to={"/feedback"}>
                 <DropdownMenuItem className="dark:text-gray-200 dark:focus:bg-gray-800">Support</DropdownMenuItem>
               </Link>
               <DropdownMenuSeparator className="dark:bg-gray-800" />
