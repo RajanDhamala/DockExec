@@ -3,6 +3,8 @@ import { LoginUser, RegisterUser, verifyResetToken, LogoutUser, ForgotPassword, 
 import AuthUser from "../Middlewares/AuthMiddelware.js"
 import Whoareu from "../Middlewares/MeMiddle.js";
 import avatarUpload from "../Middlewares/AvatarUpload.js"
+import RedisLimiter from "../Middlewares/RedisLimitMiddleware.js";
+
 
 const UserRouter = Router()
 
@@ -10,10 +12,10 @@ UserRouter.get("/", (req, res) => {
   res.send("users endpoint is up")
 })
 
-UserRouter.post("/register", RegisterUser)
-UserRouter.post("/login", LoginUser)
-UserRouter.post("/forgot-password", ForgotPassword)
-UserRouter.post("/reset-psd", verifyResetToken)
+UserRouter.post("/register", RedisLimiter("register"), RegisterUser)
+UserRouter.post("/login", RedisLimiter("login"), LoginUser)
+UserRouter.post("/forgot-password", RedisLimiter("forgot_password"), ForgotPassword)
+UserRouter.post("/reset-psd", RedisLimiter("reset_password"), verifyResetToken)
 UserRouter.get("/logout", AuthUser, LogoutUser)
 UserRouter.get("/points/:problemId/:userId", UpdatePoints)
 UserRouter.get("/me", Whoareu)

@@ -1,5 +1,6 @@
 
 import crypto from "crypto";
+import RedisLimiter from "./Middlewares/RedisLimitMiddleware.js";
 
 // Generate random state for CSRF protection
 const generateState = () => crypto.randomBytes(16).toString("hex");
@@ -24,7 +25,7 @@ const GithubProvider = (app, clientId, clientSecret, redirectUrl, onSuccess, onE
   });
 
   // Step 2: Callback from GitHub
-  app.get("/auth/github/callback", async (req, res) => {
+  app.get("/auth/github/callback", RedisLimiter("oauthLogin"), async (req, res) => {
     const { code, state } = req.query;
     const storedState = req.cookies.github_oauth_state;
 

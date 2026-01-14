@@ -7,7 +7,6 @@ const BATCH_INTERVAL = 150000;
 let buffer = []
 
 const LogBulkToken = async (data) => {
-
   buffer.push(data)
   if (buffer.length >= BATCH_SIZE) {
     FlushBuffer()

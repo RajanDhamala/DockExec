@@ -6,6 +6,7 @@ import { RedisClient } from "../Utils/RedisClient.js"
 import { getRabbit, RabbitChannel } from "../Utils/ConnectRabbit.js";
 import { v4 as uuidv4 } from 'uuid';
 import { IncreaseToken } from "../Utils/TokenCounter.js";
+import Feedback from "../Schemas/FeedbackSchema.js"
 
 const RabbitClient = await getRabbit()
 const execCode = asyncHandler(async (req, res) => {
@@ -58,6 +59,35 @@ const execCode = asyncHandler(async (req, res) => {
     new ApiResponse(200, "Successfully produced job for code execution", uuid)
   );
 });
+
+
+const handleFeedback = asyncHandler(async (req, res) => {
+  const { title, description } = req.body
+
+  if (!title || !description) {
+    throw new ApiError(400, null, "inlcude title and description in req")
+  }
+
+  const ImagesUrl = req.body.imageUrls
+  console.log("images url:", ImagesUrl)
+  if (!ImagesUrl || ImagesUrl.length == 0) {
+    console.log("user has provided no img btw")
+  }
+  console.log("user submitted review:", title, description)
+  try {
+    await Feedback.create({
+      title: title,
+      description: description,
+      images: ImagesUrl
+    })
+  } catch (err) {
+    console.log("filed to udpate db")
+    throw new ApiError(500, null, "internal server error")
+  }
+  return res.send(new ApiResponse(200, "successfully submitted feedback"))
+})
+
+
 
 const migratedb = asyncHandler(async (req, res) => {
   const postdata = [
@@ -821,4 +851,4 @@ const migratedb = asyncHandler(async (req, res) => {
   }
 })
 
-export { execCode, migratedb };
+export { execCode, handleFeedback, migratedb };

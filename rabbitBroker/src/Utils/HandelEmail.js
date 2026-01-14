@@ -27,28 +27,54 @@ const handelEmail = async (data, msg, channel) => {
     await ForgotPassword(data.fullname, templink, data.email)
     channel.ack(msg)
   }
+
+
+
   else if (data.type == "review-mail") {
-    console.log("we got review mail btw")
+    console.log("we got review mail btw", data)
     const templink = `http://localhost:5173/review`
-    ReviewEmail(data.fullname, data.email, templink)
+    for (const item of data.data.inactiveUsers) {
+      console.log(
+        item
+      );
+      try {
+        await ReviewEmail(item.fullname, item.email, templink)
+        console.log(" review mail sent btw")
+      } catch (err) {
+        console.error(`Failed to send email to ${item.email}:`, err);
+      }
+    }
     channel.ack(msg)
     return
   }
-  else if (data.type == "reconnect-mail") {
-    const templink = `http://localhost:5173/leet}`
 
+  else if (data.type == "reconnect-mail") {
+    const templink = `http://localhost:5173/leet`
     for (const item of data.data.inactiveUsers) {
       console.log(
         "userId:", item.userId,
         "tokenUsed:", item.tokenUsed,
         "fullname:", item.fullname,
         "points:", item.points,
-        "email:", item.email
+        "email:", item.email,
+        "solvedCasesNo:", item.solvedTestCaseCount
       );
-
-      await ReconnectEmail(item.fullname, "Two Sum", templink, `${item.points}`, item.email);
+      const hasSolvedAll = item.solvedTestCaseCount >= 15;
+      if (hasSolvedAll) continue;
+      try {
+        await ReconnectEmail(
+          item.fullname,
+          item.solvedTestCaseCount,
+          templink,
+          item.points,
+          item.email,
+        );
+        console.log("mail sent btw")
+      } catch (err) {
+        console.error(`Failed to send email to ${item.email}:`, err);
+      }
     }
-    channel.ack(msg)
+    channel.ack(msg);
     return
   }
   else {

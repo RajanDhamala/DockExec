@@ -59,7 +59,6 @@ const consumeJobs = async () => {
         const jsonData = await JSON.parse(job)
         console.log("mail logs:", jsonData)
         handelEmail(jsonData, msg, channel)
-
       }
     })
 

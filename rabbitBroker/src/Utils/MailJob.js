@@ -61,7 +61,10 @@ const ForgotPassword = async (name, link, toEmail) => {
 
 
 const ReviewEmail = async (name, toEmail, link) => {
-  if (!name || !toEmail) return;
+  if (!name || !toEmail || !link) {
+    console.log("retun babu", name, toEmail)
+    return;
+  }
 
   const subject = "We Miss You at DockExe!";
 
@@ -92,55 +95,57 @@ const ReviewEmail = async (name, toEmail, link) => {
     html: body,
   };
 
-  try {
-    await transporter.sendMail(mailOptions);
-    console.log(`Re-engagement email sent to ${toEmail}`);
-  } catch (error) {
-    console.error(`Error sending email to ${toEmail}:`, error);
-  }
+  await transporter.sendMail(mailOptions);
+  console.log(`Re-engagement email sent to ${toEmail}`);
 };
 
 
-const ReconnectEmail = async (name, problemName, problemUrl, points, toEmail) => {
-  if (!name || !problemName || !problemUrl || !points || !toEmail) {
+const TOTAL_PROBLEMS = 15;
+
+const ReconnectEmail = async (name, solvedCount, link, points, toEmail, hasSolvedAll = false) => {
+  if (!name || solvedCount == null || !points || !toEmail) {
+    console.log("sned all data")
     return;
   }
-
-  const subject = `Solve "${problemName}" and Earn ${points} Points!`;
-
+  if (hasSolvedAll) return;
+  const remaining = TOTAL_PROBLEMS - solvedCount;
+  const subject = `You have solved ${solvedCount} out of ${TOTAL_PROBLEMS} problems!`;
   const body = `
-  <div style="font-family: Arial, sans-serif; line-height:1.6; color: #333;">
-    <h2 style="color: #1E90FF;">Hi ${name},</h2>
-    <p>We noticed you haven’t solved "<strong>${problemName}</strong>" yet.</p>
+    <div style="font-family: Arial, sans-serif; line-height:1.6; color: #333;">
+      <h2 style="color: #1E90FF;">Hi ${name},</h2>
 
-    <p>By solving this problem, you can increase your <strong>${points} points</strong> and level up on DockExe!</p>
+      <p>
+        You have solved <strong>${solvedCount}</strong> out of <strong>${TOTAL_PROBLEMS}</strong> problems on DockExe so far.
+      </p>
 
-    <p style="text-align: center; margin: 30px 0;">
-      <a href="${problemUrl}" 
-         style="background-color: #1E90FF; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block;">
-        Solve Now
-      </a>
-    </p>
+      <p>
+        Keep going! Completing more problems will earn you points and help you climb the leaderboard. 
+      </p>
 
-    <p>Don't miss the chance to improve your skills and climb the leaderboard!</p>
+      <p style="text-align: center; margin: 30px 0;">
+        <a href="${link}"
+           style="background-color: #1E90FF; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px;">
+          Solve More Problems
+        </a>
+      </p>
 
-    <p>Happy coding,<br/><strong>DockExe Team</strong></p>
-  </div>
+      <p>
+        Only <strong>${remaining}</strong> problems left to complete all challenges 🚀
+      </p>
+
+      <p>
+        Happy coding,<br/>
+        <strong>DockExe Team</strong>
+      </p>
+    </div>
   `;
 
-  const mailOptions = {
+  await transporter.sendMail({
     from: process.env.GMAIL_ADDR,
     to: toEmail,
     subject,
     html: body,
-  };
-
-  try {
-    await transporter.sendMail(mailOptions);
-    console.log(`Reconnect email sent to ${toEmail}`);
-  } catch (error) {
-    console.error(`Error sending email to ${toEmail}:`, error);
-  }
+  });
 };
 
 

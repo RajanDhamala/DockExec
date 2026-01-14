@@ -16,8 +16,9 @@ import dotenv from "dotenv"
 import { loginOrLinkUser } from "./src/Utils/OuthUtils.js";
 import NotificationRouter from "./src/Routes/NotificationRoute.js"
 import { getRabbit } from "./src/Utils/ConnectRabbit.js"
+import ApiError from "./src/Utils/ApiError.js";
 
-dotenv.config()
+dotenv.config({})
 
 const app = express();
 app.use(cors({
@@ -148,15 +149,25 @@ app.get("/", (req, res) => {
   res.send("Server is up and running");
 });
 
-app.use((err, req, res, next) => {
-  res.status(500).json({ error: "Internal Server Error" });
-});
-
 app.use("/users", UserRouter)
 app.use("/api", ApiRouter)
 app.use("/code", CodeRouter)
 app.use("/profile", ProfileRouter)
 app.use("/notification", NotificationRouter)
 app.use("/token", TokenRouter)
+
+
+app.use((err, req, res, next) => {
+  if (err instanceof ApiError) {
+    return res.status(err.statusCode || 500).json({
+      success: false,
+      message: err.message || "Something went wrong",
+      errors: err.errors || [],
+    });
+  }
+
+  console.error(err.stack);
+  res.status(500).json({ success: false, message: "Internal Server Error" });
+});
 
 export default app
