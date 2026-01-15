@@ -73,8 +73,9 @@ export default function WorkflowsPage() {
     mutationFn: (runId) => deletePrint(runId),
     onSuccess: (_, runId) => {
       console.log("Successfully deleted:", runId);
+      toast.success("Successfully deleted")
 
-      queryClient.setQueryData(["RecentPrint", "runs"], (oldData) =>
+      queryClient.setQueryData(["RecentPrint", "runs", `${currentPage.run}`], (oldData) =>
         oldData.filter((item) => item._id !== runId)
       );
     },
@@ -88,9 +89,10 @@ export default function WorkflowsPage() {
   const { mutate: deleteProgrammiz } = useMutation({
     mutationFn: (runId) => ApideleteProgrammiz(runId),
     onSuccess: (_, runId) => {
+      toast.success("Successfully deleted")
       console.log("Successfully deleted:", runId);
 
-      queryClient.setQueryData(["rawExe", "programmiz"], (oldData) =>
+      queryClient.setQueryData(["rawExe", "programmiz", `${currentPage.programmiz}`], (oldData) =>
         oldData.filter((item) => item._id !== runId)
       );
     },
@@ -222,9 +224,8 @@ export default function WorkflowsPage() {
     isError: RawExeError,
     refetch: refetchRawExe,
   } = useQuery({
-    queryKey: ["rawExe", "programmiz"],
+    queryKey: ["rawExe", "programmiz", `${currentPage.programmiz}`],
     queryFn: fetchRawExecution,
-    enabled: false,
     refetchOnWindowFocus: false,
     refetchOnMount: false,
     staleTime: 5 * 60 * 1000,
@@ -287,16 +288,6 @@ export default function WorkflowsPage() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Executions</h1>
           <p className="text-gray-600 dark:text-slate-400 mt-1">Manage and monitor your code executions</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            className="gap-2 bg-transparent border-gray-200 text-gray-700 dark:border-slate-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-gray-800"
-            size="sm"
-          >
-            <Filter className="w-4 h-4" />
-            Filter
-          </Button>
         </div>
       </div>
 

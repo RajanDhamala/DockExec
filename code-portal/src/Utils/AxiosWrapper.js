@@ -4,24 +4,56 @@ const api = axios.create({
   baseURL: `http://localhost:8000` || "/api",
   timeout: 10000,
   headers: { "Content-Type": "application/json" },
-  withCredentials: true, // send cookies automatically
+  withCredentials: true,
 });
 
-// Response interceptor
 api.interceptors.response.use(
   (response) => {
     const res = response.data;
-    if (!res.success) {
-      return Promise.reject(res);
+    const isSuccess = res?.success ?? (response.status >= 200 && response.status < 300);
+
+    if (!isSuccess) {
+      return Promise.reject({
+        statusCode: res?.statusCode || response.status,
+        message: res?.message || "Something went wrong",
+        errors: res?.errors || [],
+      });
     }
-    return res.data;
+
+    return res;
   },
   (error) => {
-    if (error.response?.status === 401) {
-      console.error("Unauthorized, redirecting to login...");
-      window.location.href = "/login";
+    const status = error.response?.status || 500;
+    const data = error.response?.data || {};
+    console.log("data inside wrapper:", data)
+
+    switch (status) {
+      case 401:
+        console.error("Unauthorized - redirecting to login");
+        window.location.href = "/login";
+        break;
+
+      case 403:
+        console.error("Forbidden - you don't have permission");
+        break;
+
+      case 429:
+        console.warn("Rate limit exceeded. Please wait a moment.");
+        break;
+
+      case 500:
+        console.error("Server error. Try again later.");
+        break;
+
+      default:
+        console.warn(`HTTP ${status}: ${data.message || error.message}`);
     }
-    return Promise.reject(error.response?.data || error);
+
+    return Promise.reject({
+      statusCode: status,
+      message: data.message || error.message || "Something went wrong",
+      errors: data.errors || [],
+    });
   }
 );
 

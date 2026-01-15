@@ -153,7 +153,8 @@ export default function Overview() {
 
   const { data: recentExcData, isError: recentError, isLoading: isRecentLoading } = useQuery({
     queryKey: ["recentExe", "data"],
-    queryFn: fetchRecentExecutions
+    queryFn: fetchRecentExecutions,
+    retry: false
   });
 
   // Transform API data to table-friendly format
@@ -401,7 +402,7 @@ export default function Overview() {
                     </div>
                   </div>
                   <div className="text-2xl font-semibold text-gray-900 dark:text-white mb-1">
-                    {MetricsData.totalruns}
+                    {MetricsData.totalruns || "no executions"}
                   </div>
                   <div className="text-sm text-gray-600 dark:text-slate-400">Total Runs</div>
                 </CardContent>
@@ -420,7 +421,11 @@ export default function Overview() {
                     </div>
                   </div>
                   <div className="text-2xl font-semibold text-gray-900 dark:text-white mb-1">
-                    {((MetricsData?.totalruns - MetricsData.failed?.count) / MetricsData?.totalruns * 100).toFixed(1)}%
+
+                    {MetricsData?.totalruns > 0
+                      ? (((MetricsData.totalruns - (MetricsData.failed?.count ?? 0))
+                        / MetricsData.totalruns) * 100).toFixed(1) + "%"
+                      : "None try Now"}
                   </div>
                   <div className="text-sm text-gray-600 dark:text-slate-400">Acceptance Rate</div>
                 </CardContent>
@@ -436,17 +441,22 @@ export default function Overview() {
                   </div>
 
                   <div className="text-sm text-gray-600 dark:text-slate-400 space-y-1">
-                    {MetricsData.topLanguages.slice(0, 2).map(lang => (
-                      <div key={lang._id} className="flex justify-between">
-                        <span>{lang._id}</span>
-                        <span className="font-medium">{lang.totalCount}</span>
+
+                    {MetricsData?.topLanguages?.length > 0 ? (
+                      MetricsData.topLanguages.slice(0, 2).map(lang => (
+                        <div key={lang._id} className="flex justify-between">
+                          <span>{lang._id}</span>
+                          <span className="font-medium">{lang.totalCount}</span>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="text-sm text-muted-foreground ">
+                        Submit some code to see your top languages
                       </div>
-                    ))}
+                    )}
                   </div>
                 </CardContent>
               </Card>
-
-
 
               {/* Your Activity */}
               <Card className="border-gray-200 bg-white dark:bg-gray-900 dark:border-slate-700 shadow-sm">
@@ -560,16 +570,6 @@ export default function Overview() {
                     <CardTitle className="text-lg font-semibold dark:text-white">Recent Executions</CardTitle>
                     <CardDescription className="dark:text-slate-400">Monitor your code executions and performance</CardDescription>
                   </div>
-                  <div className="flex items-center gap-2 w-full sm:w-auto">
-                    <Button variant="outline" size="sm" className="flex-1 sm:flex-none dark:border-slate-700 dark:text-slate-300 dark:hover:bg-gray-800">
-                      <Filter className="w-4 h-4 mr-2" />
-                      Filter
-                    </Button>
-                    <Button variant="outline" size="sm" className="flex-1 sm:flex-none dark:border-slate-700 dark:text-slate-300 dark:hover:bg-gray-800">
-                      <Eye className="w-4 h-4 mr-2" />
-                      View All
-                    </Button>
-                  </div>
                 </div>
               </CardHeader>
               <CardContent className="p-0 overflow-x-auto">
@@ -595,7 +595,7 @@ export default function Overview() {
                     ) : recentError ? (
                       <TableRow>
                         <TableCell colSpan={7} className="text-center py-4 text-red-600 dark:text-red-400">
-                          Failed to load recent executions
+                          recent executions not found
                         </TableCell>
                       </TableRow>
                     ) : tableData.length === 0 ? (

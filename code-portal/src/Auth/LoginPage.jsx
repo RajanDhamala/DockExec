@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
+import api from "../Utils/AxiosWrapper.js"
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Eye, EyeOff } from "lucide-react";
@@ -10,7 +11,6 @@ import { useParams } from "react-router-dom";
 import { Github } from "lucide-react";
 import useUserStore from "@/ZustandStore/UserStore";
 import { useMutation } from "@tanstack/react-query";
-
 
 
 export default function AuthPage() {
@@ -57,11 +57,11 @@ export default function AuthPage() {
 
 
   const { mutate: mutatePassword, isLoading } = useMutation(
-
     {
       mutationFn:
         async (email) => {
-          const response = await axios.post("http://localhost:8000/users/forgot-password", { email });
+          const response = await api.post("http://localhost:8000/users/forgot-password", { email });
+          console.log("response:", response)
           return response.data;
         },
       onSuccess: (data) => {
@@ -87,10 +87,9 @@ export default function AuthPage() {
   const handleLogin = async () => {
     setLoading(true);
     try {
-      const res = await axios.post(
+      const res = await api.post(
         "http://localhost:8000/users/login",
         { email, password },
-        { withCredentials: true }
       );
       toast.success(res.data.message || "Logged in successfully");
       setEmail("");
@@ -115,7 +114,7 @@ export default function AuthPage() {
     }
     setLoading(true);
     try {
-      const res = await axios.post("http://localhost:8000/users/register", {
+      const res = await api.post("http://localhost:8000/users/register", {
         fullname,
         email,
         password,

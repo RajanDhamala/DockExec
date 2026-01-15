@@ -2,13 +2,15 @@ import { useState, useEffect, useRef } from "react";
 import { v4 as uuidv4 } from "uuid";
 import Editor from "@monaco-editor/react";
 import { Play, Upload, RotateCcw, Code2, CheckCircle2, Clock, BarChart3, X, AlertCircle, XCircle, ChevronRight } from "lucide-react";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 import { Link } from "react-router-dom";
 import { toast } from "react-hot-toast";
 import useSocketStore from "@/ZustandStore/SocketStore";
 import ExecutionGraph from "./ExecutionGraph";
 import useUserStore from "@/ZustandStore/UserStore";
+
+
 
 const fetchProblems = async () => {
   const { data } = await axios.get("http://localhost:8000/code/list");
@@ -722,7 +724,10 @@ export default function LeetCode() {
   const [currentJobId, setCurrentJobId] = useState(null);
   const [executionData, setExecutionData] = useState(null); // NEW: Store execution metadata
   const [isSaving, setIsSaving] = useState(false);
+  const [totalTestCases, setTotalTestCases] = useState(0);
+  const [submissionData, setSubmissionData] = useState([]);
 
+  const queryClient = useQueryClient()
 
   const { socket, initSocket, getSocket, isConnected } = useSocketStore();
   const { currentUser } = useUserStore()
@@ -731,6 +736,7 @@ export default function LeetCode() {
     initSocket();
     return () => socket?.disconnect();
   }, []);
+
 
   const handleAlltestCases = (data) => {
     setTestResults(prev => {
@@ -855,6 +861,23 @@ export default function LeetCode() {
 
   });
 
+  const handleSocketUpdate = (data) => {
+    const newSubmission = {
+      _id: data.jobId,
+      problemId: data.problemId,
+      language: data.language,
+      totalTestCases: data.totalTestCases,
+      passedNo: data.totalTestCases - subFailedCounter.current,
+      status: subFailedCounter.current === 0 ? "success" : "failed",
+      createdAt: data.timestamp,
+    };
+
+    queryClient.setQueryData(["submissonData", currentProblemId], (oldData = []) => {
+      console.log("old data we has:", oldData)
+      return [newSubmission, ...oldData];
+    });
+  };
+
   const saveDraftMutation = useMutation({
     mutationFn: ({ problemId, language, code }) => {
 
@@ -961,39 +984,49 @@ export default function LeetCode() {
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [code, language, currentProblemId, isSaving]);
-  // Socket event handlers - ADD BLOCKED RESULT HANDLER
+
+  const subFailedCounter = useRef(0);
+
   useEffect(() => {
     if (!socket) return;
-    const handleAlltestCases = (data) => {
-      console.log("test result executed", data);
 
-      // Check if this is a new job - if so, reset results
+    const handleAlltestCases = (data) => {
       if (currentJobId !== data.jobId) {
+        subFailedCounter.current = 0;
         setCurrentJobId(data.jobId);
         setTestResults([data]);
         setAllTestsCompleted(false);
       } else {
-        // Same job - update/add result (keep max 4)
         setTestResults(prev => {
           const filtered = prev.filter(r => r.testCaseNumber !== data.testCaseNumber);
           const updated = [...filtered, data].sort((a, b) => a.testCaseNumber - b.testCaseNumber);
-          return updated.slice(0, 4); // Keep max 4 results
+          return updated.slice(0, 4);
         });
       }
 
-      // Check if all test cases are completed
+      if (!data.passed) {
+        subFailedCounter.current += 1;
+      }
+
       if (data.testCaseNumber === data.totalTestCases) {
         setAllTestsCompleted(true);
         setIsRunning(false);
+        setSubmissionData({
+          _id: data.jobId,
+          problemId: data.problemId,
+          language: data.language,
+          totalTestCases: data.totalTestCases,
+          status: subFailedCounter.current === 0 ? "success" : "failed",
+          passedNo: data.totalTestCases - subFailedCounter.current,
+          createdAt: data.timestamp,
+        });
+        handleSocketUpdate(data)
       }
 
-      // Show popup for all screens, panel only for desktop
+      // show popup / panel
       setShowPopup(true);
-      if (window.innerWidth >= 1024) {
-        setShowTestResults(true);
-      }
+      if (window.innerWidth >= 1024) setShowTestResults(true);
     };
-
     const handleRunResult = (data) => {
       console.log("actually runs code res", data);
 

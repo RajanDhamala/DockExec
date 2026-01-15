@@ -3,6 +3,7 @@ import { getList, GetData, TestPrintCode, GetSubmissons, GetTestCode, AllTestCas
 import AuthUser from "../Middlewares/AuthMiddelware.js"
 import countTokenMiddle from "../Middlewares/TokenCountMiddle.js"
 import AuthIdemptent from "../Middlewares/IdempotentMiddleware.js"
+import createLimiter from "../Middlewares/ExpressRatelimit.js"
 
 const CodeRouter = Router()
 
@@ -14,15 +15,15 @@ CodeRouter.get("/list", getList)
 
 CodeRouter.get("/getProblem/:id", GetData)
 
-CodeRouter.post("/testPrint", AuthIdemptent, countTokenMiddle, TestPrintCode)
+CodeRouter.post("/testPrint", createLimiter("testPrint"), AuthIdemptent, countTokenMiddle, TestPrintCode)
 
-CodeRouter.post("/Alltest_Cases", AuthIdemptent, countTokenMiddle, AllTestCases)
+CodeRouter.post("/Alltest_Cases", createLimiter("allTestCases"), AuthIdemptent, countTokenMiddle, AllTestCases)
 
-CodeRouter.post("/saveDraft", AuthUser, SaveDraftCode)
+CodeRouter.post("/saveDraft", createLimiter("saveDraft"), AuthUser, SaveDraftCode)
 
-CodeRouter.get("/submissions/:problemId", AuthUser, GetSubmissons)
+CodeRouter.get("/submissions/:problemId", createLimiter("normal"), AuthUser, GetSubmissons)
 
-CodeRouter.get("/getUrCode/:testCaseId/:problemId", AuthUser, GetTestCode)
+CodeRouter.get("/getUrCode/:testCaseId/:problemId", createLimiter("normal"), AuthUser, GetTestCode)
 
 
 export default CodeRouter

@@ -93,7 +93,7 @@ export default function LeaderboardPage() {
                 variant={locationFilter === "global" ? "default" : "ghost"}
                 size="sm"
                 onClick={() => setLocationFilter("global")}
-                className="border border-slate-700/80 bg-slate-800/50 hover:bg-blue-600"
+                className="border border-slate-700/80 bg-slate-800/50 hover:bg-blue-600 dark:text-white"
               >
                 Global
               </Button>
@@ -101,7 +101,7 @@ export default function LeaderboardPage() {
                 variant={locationFilter === "local" ? "default" : "ghost"}
                 size="sm"
                 onClick={() => setLocationFilter("local")}
-                className="border border-slate-700/80 bg-slate-800/50 hover:bg-blue-600"
+                className="border border-slate-700/80 bg-slate-800/50 hover:bg-blue-600 dark:text-white"
               >
                 Nearby
               </Button>
