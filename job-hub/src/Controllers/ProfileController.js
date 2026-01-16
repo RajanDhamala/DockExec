@@ -273,7 +273,8 @@ const reRunRecentExecutions = asyncHandler(async (req, res) => {
     problemId: problemData._id,
     function_name: problemData.function_name,
     parameters: problemData.parameters,
-    wrapper_type: problemData.wrapper_type
+    wrapper_type: problemData.wrapper_type,
+    type: "rerun"
   };
 
   await RabbitChannel.publish(
@@ -530,6 +531,7 @@ const reRunRecentPrints = asyncHandler(async (req, res) => {
     socketId,
     userId: req.user.id,
     problemId: problemId,
+    type: "rerun"
   }
   await RabbitChannel.publish("reRun_printCase", Buffer.from(JSON.stringify(message)))
 
@@ -549,6 +551,9 @@ const DeletePrints = asyncHandler(async (req, res) => {
   }
   return res.send(new ApiResponse(200, "successfully delted prints"))
 })
+
+
+
 
 
 
@@ -637,7 +642,8 @@ const reRunPorgrammiz = asyncHandler(async (req, res) => {
       language,
       id: uuid,
       socketId,
-      userId: req.user.id
+      userId: req.user.id,
+      type: "rerun"
     };
 
     await RabbitChannel.publish(

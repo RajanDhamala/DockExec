@@ -24,7 +24,9 @@ const execCode = asyncHandler(async (req, res) => {
       language,
       "id": uuid,
       "socketId": socketId,
-      "userId": req.user.id
+      "userId": req.user.id,
+      type: "normal",
+      createdAt: Date.now()
     }
     await RabbitChannel.publish(
       "code_exchange",
@@ -40,7 +42,7 @@ const execCode = asyncHandler(async (req, res) => {
         description: "Just now executed code",
         status: "success",
         browserMeta: {},
-        atTime: Date.now()
+        atTime: Date.now(),
       }
     };
     await RabbitClient.sendToQueue("Activity_Logs", Buffer.from(JSON.stringify(activity)), { persistent: true })

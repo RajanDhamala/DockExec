@@ -202,7 +202,10 @@ def programiz_consumer(_):
         job_id = job.get('id', 'unknown')
         socketId = job.get('socketId')
         userId = job.get('userId')
-        
+        type=job.get("type")
+        createdAt=job.get("createdAt")
+        print("created tiem stamps did u get?:",createdAt) 
+        print("the type of job iz:",type)
         print("i got the programiz_execution data")
 
 
@@ -214,7 +217,9 @@ def programiz_consumer(_):
                 "language": language,
                 "userId": userId,
                 "code": code,
-                "socketId": socketId
+                "socketId": socketId,
+                "type":type,
+                "createdAt":createdAt,
             })
             print("published the programmiz code for exe")
         else:
@@ -225,7 +230,9 @@ def programiz_consumer(_):
                 "language": language,
                 "code": code,
                 "userId": userId,
-                "status": "unsafe"
+                "status": "unsafe",
+                "type":type,
+                "createdAt":createdAt,
             })
         ch.basic_ack(delivery_tag=method.delivery_tag)
 
@@ -256,6 +263,7 @@ def all_test_consumer(_):
         function_name = job.get("function_name")
         parameters = job.get("parameters")
         wrapper_type = job.get("wrapper_type")
+        type=job.get("type")
 
 
         is_safe = checker.check(code, language)
@@ -269,6 +277,7 @@ def all_test_consumer(_):
                 "code": code,
                 "reason": checker.reason(),
                 "status": "unsafe",
+                "type":type
             })
             ch.basic_ack(delivery_tag=method.delivery_tag)
             return
@@ -287,7 +296,8 @@ def all_test_consumer(_):
                 "socketId": socket_id,
                 "userId": user_id,
                 "problemId": problem_id,
-                "orginalCode": code if i == 0 else ""
+                "orginalCode": code if i == 0 else "",
+                "type":type
             })
             print("wrapper genrated and sent",i)
 
@@ -318,6 +328,7 @@ def print_test_consumer(_):
         function_name = job.get("function_name")
         parameters = job.get("parameters")
         wrapper_type = job.get("wrapper_type")
+        type=job.get("type")
         problem_id = job.get("problemId")
 
         print("this is for the single conusmer btw")
@@ -332,6 +343,7 @@ def print_test_consumer(_):
                 "code": code,
                 "reason": checker.reason(),
                 "status": "unsafe",
+                "type":type
             })
             ch.basic_ack(delivery_tag=method.delivery_tag)
             return
@@ -343,7 +355,8 @@ def print_test_consumer(_):
             "wrappedCode": wrapped,
             "language": language,
             "userId": user_id,
-            "problemId": problem_id
+            "problemId": problem_id,
+            "type":type
         })
 
         ch.basic_ack(delivery_tag=method.delivery_tag)

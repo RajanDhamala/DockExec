@@ -1,4 +1,4 @@
-
+import CursorWorkflowPage from "./ProfileCompoments/CursorWorflow";
 import { Suspense } from "react";
 import "./index.css";
 import { LazyLandingPage, LazyPasswordReset, LazyFeedBackPage, LazyLoginPage, LazyWritePage, LazyLeetCode, LazyTestPage, LazyBillingPage, LazyPrefrencePage } from "./LazyLoading/LazyLoading";
@@ -84,8 +84,10 @@ function App() {
             <Route path="/tokenGraph" element={<TokenUsageGraph />} />
 
             <Route element={<DashboardLayout />}>
+
+              <Route path="/cursor" element={<CursorWorkflowPage />} />
               <Route path="/overview" element={<Overview />} />
-              <Route path="workflows" element={<WorkflowPage />} />
+              <Route path="/workflows" element={<WorkflowPage />} />
               <Route path="/settings" element={<SettingsPage />} />
               <Route path="/bills" element={<LazyBillingPage />} />
               <Route path="/prefrences" element={<LazyPrefrencePage />} />

@@ -1,4 +1,5 @@
 import express from "express";
+import CursorRoute from "./src/Routes/CursorRoute.js";
 import TokenRouter from "./src/Routes/TokenRoute.js";
 import ProfileRouter from "./src/Routes/ProfileRoute.js";
 import { GithubProvider, GoogleProvider } from './src/GithubProvider.js';
@@ -17,6 +18,7 @@ import { loginOrLinkUser } from "./src/Utils/OuthUtils.js";
 import NotificationRouter from "./src/Routes/NotificationRoute.js"
 import { getRabbit } from "./src/Utils/ConnectRabbit.js"
 import ApiError from "./src/Utils/ApiError.js";
+import { createCursorProgrammiz } from "./src/Controllers/CursorContoller.js";
 
 dotenv.config({})
 
@@ -87,12 +89,14 @@ await connectRedis();
     await channel.assertQueue("print_test_result", { durable: true });
     await channel.assertQueue("all_test_result", { durable: true });
     await channel.assertQueue("blocked_exec", { durable: true });
+    await channel.assertQueue("re-Run", { durable: true });
 
     // Bindings
     await channel.bindQueue("programiz_result", "code_exchange", "programmiz_result");
     await channel.bindQueue("print_test_result", "code_exchange", "print_test_result");
     await channel.bindQueue("all_test_result", "code_exchange", "all_test_result");
     await channel.bindQueue("blocked_exec", "code_exchange", "blocked_execution");
+    await channel.bindQueue("re-Run", "code_exchange", "re-Run");
 
     console.log("RabbitMQ setup complete, waiting for messages...");
 
@@ -103,8 +107,16 @@ await connectRedis();
       const data = JSON.parse(msg.content.toString());
       await emitProgrammizResult(data);
       await LogRawExecution(data);
+      createCursorProgrammiz(data)
       channel.ack(msg);
     });
+
+    channel.consume("re-Run", async (msg) => {
+      if (!msg) return
+      const data = JSON.parse(msg.content.toString())
+      console.log("re-Run:", data)
+      channel.ack(msg)
+    })
 
     channel.consume("print_test_result", async (msg) => {
       if (!msg) return;
@@ -150,6 +162,7 @@ app.get("/", (req, res) => {
 });
 
 app.use("/users", UserRouter)
+app.use("/cursor", CursorRoute)
 app.use("/api", ApiRouter)
 app.use("/code", CodeRouter)
 app.use("/profile", ProfileRouter)

@@ -21,24 +21,28 @@ import (
 )
 
 type ProgrammizRequest struct {
-	JobID     string `json:"jobId"`
-	SocketId  string `json:"socketId"`
-	Code      string `json:"code"`
-	Language  string `json:"language"`
-	UserId    string `json:"userId"`
-	ProblemId string `json:"problemId"`
+	JobID     string      `json:"jobId"`
+	SocketId  string      `json:"socketId"`
+	Code      string      `json:"code"`
+	Language  string      `json:"language"`
+	UserId    string      `json:"userId"`
+	ProblemId string      `json:"problemId"`
+	Type      string      `json:"type"`
+	CreatedAt json.Number `json:"createdAt"`
 }
 
 type ProgrammizResponse struct {
-	SocketId  string  `json:"socketId"`
-	JobID     string  `json:"jobId"`
-	Status    string  `json:"status"`
-	Output    string  `json:"output"`
-	Duration  float64 `json:"duration_sec"`
-	UserId    string  `json:"userId"`
-	Code      string  `json:"code"`
-	Language  string  `json:"language"`
-	ProblemId string  `json:"problemId"`
+	SocketId  string      `json:"socketId"`
+	JobID     string      `json:"jobId"`
+	Status    string      `json:"status"`
+	Output    string      `json:"output"`
+	Duration  float64     `json:"duration_sec"`
+	UserId    string      `json:"userId"`
+	Code      string      `json:"code"`
+	Language  string      `json:"language"`
+	ProblemId string      `json:"problemId"`
+	Type      string      `json:"type"`
+	CreatedAt json.Number `json:"createdAt"`
 }
 
 type SingleTestCaseRequest struct {
@@ -50,6 +54,7 @@ type SingleTestCaseRequest struct {
 	SocketId    string `json:"socketId"`
 	UserId      string `json:"userId"`
 	ProblemId   string `json:"problemId"`
+	Type        string `json:"type"`
 }
 
 type SingleTestCaseResponse struct {
@@ -63,6 +68,7 @@ type SingleTestCaseResponse struct {
 	Timestamp string  `json:"timestamp"`
 	SocketId  string  `json:"socketId"`
 	Code      string  `json:"code"`
+	Type      string  `json:"type"`
 }
 
 type AllTestCasesRequest struct {
@@ -78,6 +84,7 @@ type AllTestCasesRequest struct {
 	UserId         string `json:"userId"`
 	ProblemId      string `json:"problemId"`
 	OriginalCode   string `json:"orginalCode"`
+	Type           string `json:"type"`
 }
 
 type AllTestCasesResponse struct {
@@ -98,6 +105,7 @@ type AllTestCasesResponse struct {
 	UserId         string  `json:"userId"`
 	ProblemId      string  `json:"problemId"`
 	OriginalCode   string  `json:"orginalCode"`
+	Type           string  `json:"type"`
 }
 
 const (
@@ -227,7 +235,7 @@ func setupConsumerChannel(
 func consume_OneTest_Case(conn *amqp.Connection) {
 	ch, msgs := setupConsumerChannel(
 		conn,
-		"print_test_execution", 
+		"print_test_execution",
 		"print_test_execution",
 	)
 	defer ch.Close()
@@ -261,25 +269,46 @@ func consume_OneTest_Case(conn *amqp.Connection) {
 			Language:  job.Language,
 			ProblemId: job.ProblemId,
 			Timestamp: time.Now().UTC().Format("2006-01-02 15:04:05"),
+			Type:      job.Type,
 		}
 
 		data, _ := json.Marshal(result)
 
-		err := ch.Publish(
-			exchange,
-			resultRoutingKey,
-			false,
-			false,
-			amqp.Publishing{
-				ContentType:  "application/json",
-				DeliveryMode: amqp.Persistent,
-				Body:         data,
-			},
-		)
-		if err != nil {
-			fmt.Println(" Failed to publish result:", err)
-			msg.Nack(false, true) // requeue
-			continue
+		if job.Type == "normal" {
+			err := ch.Publish(
+				exchange,
+				resultRoutingKey,
+				false,
+				false,
+				amqp.Publishing{
+					ContentType:  "application/json",
+					DeliveryMode: amqp.Persistent,
+					Body:         data,
+				},
+			)
+			if err != nil {
+				fmt.Println(" Failed to publish result:", err)
+				msg.Nack(false, true) // requeue
+				continue
+			}
+		} else {
+			err := ch.Publish(
+				"code_exchange",
+				"re-Run",
+				false,
+				false,
+				amqp.Publishing{
+					ContentType:  "application/json",
+					DeliveryMode: amqp.Persistent,
+					Body:         data,
+				},
+			)
+			if err != nil {
+				fmt.Println(" Failed to publish result:", err)
+				msg.Nack(false, true) // requeue
+				continue
+			}
+
 		}
 
 		msg.Ack(false)
@@ -310,40 +339,53 @@ func consume_Programmiz_Case(conn *amqp.Connection) {
 		output, status, execDuration := executeCode(job.Code, job.Language)
 
 		result := ProgrammizResponse{
-			SocketId: job.SocketId,
-			JobID:    job.JobID,
-			Status:   status,
-			Output:   output,
-			Duration: execDuration,
-			UserId:   job.UserId,
-			Code:     job.Code,
-			Language: job.Language,
+			SocketId:  job.SocketId,
+			JobID:     job.JobID,
+			Status:    status,
+			Output:    output,
+			Duration:  execDuration,
+			UserId:    job.UserId,
+			Code:      job.Code,
+			Language:  job.Language,
+			Type:      job.Type,
+			CreatedAt: job.CreatedAt,
 		}
 
 		data, _ := json.Marshal(result)
-
-		ch.Publish(
-			"code_exchange",
-			"programmiz_result",
-			false,
-			false,
-			amqp.Publishing{
-				ContentType:  "application/json",
-				DeliveryMode: amqp.Persistent,
-				Body:         data,
-			},
-		)
+		fmt.Println("type iz:", job.Type)
+		if job.Type == "normal" {
+			ch.Publish(
+				"code_exchange",
+				"programmiz_result",
+				false,
+				false,
+				amqp.Publishing{
+					ContentType:  "application/json",
+					DeliveryMode: amqp.Persistent,
+					Body:         data,
+				},
+			)
+		} else {
+			ch.Publish("code_exchange", "re-Run",
+				false,
+				false,
+				amqp.Publishing{
+					ContentType:  "application/json",
+					DeliveryMode: amqp.Persistent,
+					Body:         data,
+				},
+			)
+		}
 
 		msg.Ack(false)
 	}
 }
 
-
 func consume_AllTest_Case(conn *amqp.Connection) {
 	ch, msgs := setupConsumerChannel(
 		conn,
-		"all_test_execution", 
-		"all_test_execution", 
+		"all_test_execution",
+		"all_test_execution",
 	)
 	defer ch.Close()
 
@@ -397,6 +439,7 @@ func consume_AllTest_Case(conn *amqp.Connection) {
 			UserId:         testJob.UserId,
 			ProblemId:      testJob.ProblemId,
 			OriginalCode:   testJob.OriginalCode,
+			Type:           testJob.Type,
 		}
 
 		if status != "success" {
@@ -405,21 +448,40 @@ func consume_AllTest_Case(conn *amqp.Connection) {
 
 		data, _ := json.Marshal(testResult)
 
-		err := ch.Publish(
-			exchange,
-			resultRoutingKey,
-			false,
-			false,
-			amqp.Publishing{
-				ContentType:  "application/json",
-				DeliveryMode: amqp.Persistent,
-				Body:         data,
-			},
-		)
-		if err != nil {
-			fmt.Println(" Failed to publish test result:", err)
-			msg.Nack(false, true)
-			continue
+		if testJob.Type == "normal" {
+			err := ch.Publish(
+				exchange,
+				resultRoutingKey,
+				false,
+				false,
+				amqp.Publishing{
+					ContentType:  "application/json",
+					DeliveryMode: amqp.Persistent,
+					Body:         data,
+				},
+			)
+			if err != nil {
+				fmt.Println(" Failed to publish test result:", err)
+				msg.Nack(false, true)
+				continue
+			}
+		} else {
+			err := ch.Publish(
+				"code_exchange",
+				"re-Run",
+				false,
+				false,
+				amqp.Publishing{
+					ContentType:  "application/json",
+					DeliveryMode: amqp.Persistent,
+					Body:         data,
+				},
+			)
+			if err != nil {
+				fmt.Println(" Failed to publish test result:", err)
+				msg.Nack(false, true)
+				continue
+			}
 		}
 
 		msg.Ack(false)

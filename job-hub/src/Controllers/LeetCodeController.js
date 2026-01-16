@@ -100,7 +100,8 @@ const TestPrintCode = asyncHandler(async (req, res) => {
     problemId: problemData._id,
     function_name: problemData.function_name,
     parameters: problemData.parameters,
-    wrapper_type: problemData.wrapper_type
+    wrapper_type: problemData.wrapper_type,
+    type: "normal"
   };
   await RabbitChannel.publish(
     "code_exchange",
@@ -158,7 +159,8 @@ const AllTestCases = asyncHandler(async (req, res) => {
     problemId: problemData._id,
     function_name: problemData.function_name,
     parameters: problemData.parameters,
-    wrapper_type: problemData.wrapper_type
+    wrapper_type: problemData.wrapper_type,
+    type: "normal"
   };
 
   await RabbitChannel.publish(
