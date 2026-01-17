@@ -251,9 +251,40 @@ const getCursorTestCases = asyncHandler(async (req, res) => {
       ];
     }
   }
-  const docs = await CursorTestCases.find(query)
-    .sort({ createdAt: -1, tie: -1 })
-    .limit(limit);
+
+
+  const docs = await CursorTestCases.aggregate([
+    { $match: query },
+    { $sort: { createdAt: -1, _id: -1 } }, // include _id as tie
+    { $limit: limit },
+
+    // lookup problem title
+    {
+      $lookup: {
+        from: "problems",
+        localField: "problemId",
+        foreignField: "_id",
+        as: "problem",
+      },
+    },
+    { $unwind: { path: "$problem", preserveNullAndEmptyArrays: true } },
+
+    {
+      $project: {
+        language: 1,
+        totalTestCases: 1,
+        status: 1,
+        passedNo: 1,
+        createdAt: 1,
+        tie: "$_id",
+        problemId: 1,
+        name: "$problem.title",
+        firstTestCaseDuration: { $arrayElemAt: ["$testCases.duration", 0] },
+      },
+    },
+  ]);
+
+
 
   let nextCursor = null;
 
