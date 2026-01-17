@@ -46,66 +46,70 @@ type ProgrammizResponse struct {
 }
 
 type SingleTestCaseRequest struct {
-	JobID       string `json:"jobId"`
-	Language    string `json:"language"`
-	Input       string `json:"input"`
-	Expected    string `json:"expected"`
-	WrappedCode string `json:"wrappedCode"`
-	SocketId    string `json:"socketId"`
-	UserId      string `json:"userId"`
-	ProblemId   string `json:"problemId"`
-	Type        string `json:"type"`
+	JobID       string      `json:"jobId"`
+	Language    string      `json:"language"`
+	Input       string      `json:"input"`
+	Expected    string      `json:"expected"`
+	WrappedCode string      `json:"wrappedCode"`
+	SocketId    string      `json:"socketId"`
+	UserId      string      `json:"userId"`
+	ProblemId   string      `json:"problemId"`
+	Type        string      `json:"type"`
+	CreatedAt   json.Number `json:"createdAt"`
 }
 
 type SingleTestCaseResponse struct {
-	UserId    string  `json:"userId"`
-	ProblemId string  `json:"problemId"`
-	JobID     string  `json:"jobId"`
-	Language  string  `json:"language"`
-	Output    string  `json:"actualOutput"`
-	Status    string  `json:"status"`
-	Duration  float64 `json:"duration"`
-	Timestamp string  `json:"timestamp"`
-	SocketId  string  `json:"socketId"`
-	Code      string  `json:"code"`
-	Type      string  `json:"type"`
+	UserId    string      `json:"userId"`
+	ProblemId string      `json:"problemId"`
+	JobID     string      `json:"jobId"`
+	Language  string      `json:"language"`
+	Output    string      `json:"actualOutput"`
+	Status    string      `json:"status"`
+	Duration  float64     `json:"duration"`
+	Timestamp string      `json:"timestamp"`
+	SocketId  string      `json:"socketId"`
+	Code      string      `json:"code"`
+	Type      string      `json:"type"`
+	CreatedAt json.Number `json:"createdAt"`
 }
 
 type AllTestCasesRequest struct {
-	JobID          string `json:"jobId"`
-	TestCaseID     string `json:"testCaseId"`
-	TestCaseNumber int    `json:"testCaseNumber"`
-	TotalTestCases int    `json:"totalTestCases"`
-	Language       string `json:"language"`
-	Input          string `json:"input"`
-	Expected       string `json:"expected"`
-	WrappedCode    string `json:"wrappedCode"`
-	SocketId       string `json:"socketId"`
-	UserId         string `json:"userId"`
-	ProblemId      string `json:"problemId"`
-	OriginalCode   string `json:"orginalCode"`
-	Type           string `json:"type"`
+	JobID          string      `json:"jobId"`
+	TestCaseID     string      `json:"testCaseId"`
+	TestCaseNumber int         `json:"testCaseNumber"`
+	TotalTestCases int         `json:"totalTestCases"`
+	Language       string      `json:"language"`
+	Input          string      `json:"input"`
+	Expected       string      `json:"expected"`
+	WrappedCode    string      `json:"wrappedCode"`
+	SocketId       string      `json:"socketId"`
+	UserId         string      `json:"userId"`
+	ProblemId      string      `json:"problemId"`
+	OriginalCode   string      `json:"orginalCode"`
+	Type           string      `json:"type"`
+	CreatedAt      json.Number `json:"createdAt"`
 }
 
 type AllTestCasesResponse struct {
-	JobID          string  `json:"jobId"`
-	TestCaseID     string  `json:"testCaseId"`
-	TestCaseNumber int     `json:"testCaseNumber"`
-	TotalTestCases int     `json:"totalTestCases"`
-	Language       string  `json:"language"`
-	ActualOutput   string  `json:"actualOutput"`
-	Status         string  `json:"status"`
-	Passed         bool    `json:"passed"`
-	Duration       float64 `json:"duration"`
-	ErrorMessage   string  `json:"errorMessage,omitempty"`
-	Timestamp      string  `json:"timestamp"`
-	SocketId       string  `json:"socketId"`
-	Expected       string  `json:"expected"`
-	Input          string  `json:"input"`
-	UserId         string  `json:"userId"`
-	ProblemId      string  `json:"problemId"`
-	OriginalCode   string  `json:"orginalCode"`
-	Type           string  `json:"type"`
+	JobID          string      `json:"jobId"`
+	TestCaseID     string      `json:"testCaseId"`
+	TestCaseNumber int         `json:"testCaseNumber"`
+	TotalTestCases int         `json:"totalTestCases"`
+	Language       string      `json:"language"`
+	ActualOutput   string      `json:"actualOutput"`
+	Status         string      `json:"status"`
+	Passed         bool        `json:"passed"`
+	Duration       float64     `json:"duration"`
+	ErrorMessage   string      `json:"errorMessage,omitempty"`
+	Timestamp      string      `json:"timestamp"`
+	SocketId       string      `json:"socketId"`
+	Expected       string      `json:"expected"`
+	Input          string      `json:"input"`
+	UserId         string      `json:"userId"`
+	ProblemId      string      `json:"problemId"`
+	OriginalCode   string      `json:"orginalCode"`
+	Type           string      `json:"type"`
+	CreatedAt      json.Number `json:"createdAt"`
 }
 
 const (
@@ -270,6 +274,7 @@ func consume_OneTest_Case(conn *amqp.Connection) {
 			ProblemId: job.ProblemId,
 			Timestamp: time.Now().UTC().Format("2006-01-02 15:04:05"),
 			Type:      job.Type,
+			CreatedAt: job.CreatedAt,
 		}
 
 		data, _ := json.Marshal(result)
@@ -440,6 +445,7 @@ func consume_AllTest_Case(conn *amqp.Connection) {
 			ProblemId:      testJob.ProblemId,
 			OriginalCode:   testJob.OriginalCode,
 			Type:           testJob.Type,
+			CreatedAt:      testJob.CreatedAt,
 		}
 
 		if status != "success" {

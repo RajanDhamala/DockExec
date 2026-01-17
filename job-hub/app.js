@@ -18,7 +18,7 @@ import { loginOrLinkUser } from "./src/Utils/OuthUtils.js";
 import NotificationRouter from "./src/Routes/NotificationRoute.js"
 import { getRabbit } from "./src/Utils/ConnectRabbit.js"
 import ApiError from "./src/Utils/ApiError.js";
-import { createCursorProgrammiz } from "./src/Controllers/CursorContoller.js";
+import { createCursorProgrammiz, createCursorPrint, createCursorTestCases } from "./src/Controllers/CursorContoller.js";
 
 dotenv.config({})
 
@@ -107,7 +107,6 @@ await connectRedis();
       const data = JSON.parse(msg.content.toString());
       await emitProgrammizResult(data);
       await LogRawExecution(data);
-      createCursorProgrammiz(data)
       channel.ack(msg);
     });
 
@@ -141,6 +140,7 @@ await connectRedis();
           console.log("all data:", all)
           await saveTest2db(all)
           await LogTestCaseResult(all)
+          createCursorTestCases(all)
         }
       }
       channel.ack(msg);

@@ -79,6 +79,7 @@ const getRecentActivity = asyncHandler(async (req, res) => {
       .slice()
       .sort((a, b) => new Date(b.atTime) - new Date(a.atTime));
 
+
     const uiMeta = sortedMeta.slice(0, UI_LIMIT);
 
     if (sortedMeta.length > 0) {
@@ -427,37 +428,48 @@ const DeleteAvgTestStats = asyncHandler(async (req, res) => {
 
 
 const RecentPrintRuns = asyncHandler(async (req, res) => {
-  const user = req.user
-  const page = parseInt(req.query.page) || 1;
-  const limit = parseInt(req.query.limit) || 7;
-  const skip = (page - 1) * limit;
+  const { pageLimit, cursorCreatedAt, cursorTie } = req.params;
+  const userId = req.user?.id;
 
-  const totalItems = await TrialRunner.countDocuments({ userId: user.id });
+  if (!userId) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
 
-  const printData = await TrialRunner.find({ userId: user.id })
-    .select("_id status output execution_time language problemid createdAt")
-    .populate({ path: "problemid", select: "_id title" })
-    .sort({ createdAt: -1 })
-    .skip(skip)
-    .limit(limit)
-    .lean();
+  const limit = parseInt(pageLimit, 10) || PAGE_LIMIT_DEFAULT;
 
-  const totalPages = Math.ceil(totalItems / limit);
-  const hasNextPage = page < totalPages;
-  const hasPrevPage = page > 1;
+  const isInitialFetch =
+    cursorCreatedAt == "init" && cursorTie == "init";
 
-  return res.send({
-    status: 200,
-    message: "fetched print results",
-    data: printData,
-    pagination: {
-      page,
-      limit,
-      totalPages,
-      hasNextPage,
-      hasPrevPage,
-      totalItems
+  const userIdObj = new mongoose.Types.ObjectId(userId);
+  const query = { userId: userIdObj };
+  if (!isInitialFetch) {
+    const createdAtDate = new Date(cursorCreatedAt);
+    const tieNum = Number(cursorTie);
+
+    if (!isNaN(createdAtDate.getTime()) && !isNaN(tieNum)) {
+      query.$or = [
+        { userId: userIdObj, createdAt: { $lt: createdAtDate } },
+        { userId: userIdObj, createdAt: createdAtDate, tie: { $lt: tieNum } },
+      ];
     }
+  }
+  const docs = await TrialRunner.find(query)
+    .sort({ createdAt: -1, tie: -1 })
+    .limit(limit);
+
+  let nextCursor = null;
+
+  if (docs.length === limit) {
+    const lastDoc = docs[docs.length - 1];
+    nextCursor = {
+      cursorCreatedAt: lastDoc.createdAt.toISOString(),
+      cursorTie: lastDoc.tie,
+    };
+  }
+
+  res.json({
+    data: docs,
+    nextCursor,
   });
 });
 
@@ -553,46 +565,51 @@ const DeletePrints = asyncHandler(async (req, res) => {
 })
 
 
-
-
-
-
 const ProgrammizExecutions = asyncHandler(async (req, res) => {
-  const user = req.user;
+  const { pageLimit, cursorCreatedAt, cursorTie } = req.params;
+  const userId = req.user?.id;
 
-  const page = parseInt(req.query.page) || 1;
-  const limit = parseInt(req.query.limit) || 5;
-  const skip = (page - 1) * limit;
-
-  const totalItems = await RawExecution.countDocuments({ userId: user.id });
-
-  const programmizData = await RawExecution.find({ userId: user.id })
-    .select("execution_time language status output createdAt _id")
-    .sort({ createdAt: -1 })
-    .skip(skip)
-    .limit(limit)
-    .lean();
-
-  if (!programmizData.length) {
-    throw new ApiError(404, null, 'user has no programmiz results');
+  if (!userId) {
+    return res.status(401).json({ message: "Unauthorized" });
   }
 
-  const totalPages = Math.ceil(totalItems / limit);
-  const hasNextPage = page < totalPages;
-  const hasPrevPage = page > 1;
+  const limit = parseInt(pageLimit, 10) || PAGE_LIMIT_DEFAULT;
 
-  return res.send({
-    status: 200,
-    message: 'successfully fetched programmiz results',
-    data: programmizData,
-    pagination: {
-      page,
-      limit,
-      totalPages,
-      hasNextPage,
-      hasPrevPage,
-      totalItems
+  const isInitialFetch =
+    cursorCreatedAt == "init" && cursorTie == "init";
+
+  const userIdObj = new mongoose.Types.ObjectId(userId);
+  const query = { userId: userIdObj };
+
+  if (!isInitialFetch) {
+    const createdAtDate = new Date(cursorCreatedAt);
+    const tieNum = Number(cursorTie);
+
+    if (!isNaN(createdAtDate.getTime()) && !isNaN(tieNum)) {
+      query.$or = [
+        { userId: userIdObj, createdAt: { $lt: createdAtDate } },
+        { userId: userIdObj, createdAt: createdAtDate, tie: { $lt: tieNum } },
+      ];
     }
+  }
+
+  const docs = await RawExecution.find(query)
+    .sort({ createdAt: -1, tie: -1 })
+    .limit(limit);
+
+  let nextCursor = null;
+
+  if (docs.length === limit) {
+    const lastDoc = docs[docs.length - 1];
+    nextCursor = {
+      cursorCreatedAt: lastDoc.createdAt.toISOString(),
+      cursorTie: lastDoc.tie,
+    };
+  }
+
+  res.json({
+    data: docs,
+    nextCursor,
   });
 });
 

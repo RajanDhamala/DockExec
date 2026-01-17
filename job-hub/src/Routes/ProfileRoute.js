@@ -29,12 +29,12 @@ ProfileRouter.get("/avgTeststats", createLimiter("normal"), AuthUser, AvgTestCas
 ProfileRouter.get("/avgTestLogs/:problemId", createLimiter("normal"), AuthUser, viewAvgTestLogs)
 ProfileRouter.delete("/avgTest/:problemId", createLimiter("normal"), AuthUser, DeleteAvgTestStats)
 
-ProfileRouter.get("/printCases", createLimiter("normal"), AuthUser, RecentPrintRuns)
+ProfileRouter.get("/getPrint/:cursorCreatedAt/:cursorTie/:pageLimit", createLimiter("normal"), AuthUser, RecentPrintRuns)
 ProfileRouter.get("/printTestOutput/:problemId", createLimiter("normal"), AuthUser, viewRecentPrintsOutput)
 ProfileRouter.get("/printCase_id/:runId/:socketId", createLimiter("reRunTestPrint"), AuthIdemptent, reRunRecentPrints)
 ProfileRouter.delete("/DelprintCase_id/:runId", createLimiter("normal"), AuthUser, DeletePrints)
 
-ProfileRouter.get("/programmizLogs", createLimiter("normal"), AuthUser, ProgrammizExecutions)
+ProfileRouter.get("/getProgrammiz/:cursorCreatedAt/:cursorTie/:pageLimit", createLimiter("normal"), AuthUser, ProgrammizExecutions)
 ProfileRouter.get("/viewProgrammizOutput/:runId", createLimiter("normal"), AuthUser, viewProgrammizLogs)
 ProfileRouter.get("/reRunProgrammiz/:runId/:socketId", createLimiter("reRunProgrammiz"), AuthIdemptent, reRunPorgrammiz)
 ProfileRouter.delete("/deleteProgrammiz/:runId", createLimiter("normal"), AuthUser, DeleteProgrammiz)

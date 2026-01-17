@@ -45,6 +45,17 @@ export default function WorkflowsPage() {
   const [hasNextPage, SethasNextPage] = useState({ run: true, programmiz: true })
   const [hasPrevPage, SethasPrevPage] = useState({ run: false, programmiz: false })
   const [fetchedTabs, setFetchedTabs] = useState({ workflows: false, runs: false, templates: false })
+  const [cursorStack, setCursorStack] = useState([
+    { cursorCreatedAt: "init", cursorTie: "init" },
+  ]);
+  const [pageIndex, setPageIndex] = useState(0);
+  const cursor = cursorStack[pageIndex];
+
+  const [runsCursorStack, setRunsCursorStack] = useState([
+    { cursorCreatedAt: "init", cursorTie: "init" },
+  ]);
+  const [runsPageIndex, setRunsPageIndex] = useState(0);
+  const runsCursor = runsCursorStack[runsPageIndex];
 
   const openLogs = (type, id) => {
     setDialog({ open: true, type, id });
@@ -75,9 +86,12 @@ export default function WorkflowsPage() {
       console.log("Successfully deleted:", runId);
       toast.success("Successfully deleted")
 
-      queryClient.setQueryData(["RecentPrint", "runs", `${currentPage.run}`], (oldData) =>
-        oldData.filter((item) => item._id !== runId)
-      );
+      queryClient.setQueryData(["RecentPrint", "runs", runsCursor.cursorCreatedAt, runsCursor.cursorTie], (oldData) => {
+        if (!oldData) return oldData;
+        const data = Array.isArray(oldData) ? oldData : oldData?.data || [];
+        const filtered = data.filter((item) => item._id !== runId);
+        return Array.isArray(oldData) ? filtered : { ...oldData, data: filtered };
+      });
     },
   });
 
@@ -92,11 +106,20 @@ export default function WorkflowsPage() {
       toast.success("Successfully deleted")
       console.log("Successfully deleted:", runId);
 
-      queryClient.setQueryData(["rawExe", "programmiz", `${currentPage.programmiz}`], (oldData) =>
-        oldData.filter((item) => item._id !== runId)
+      queryClient.setQueryData(
+        ["rawExe", "programmiz", cursor.cursorCreatedAt, cursor.cursorTie],
+        (oldData) => {
+          if (!oldData) return oldData;
+
+          return {
+            ...oldData,
+            data: oldData.data.filter((item) => item._id !== runId),
+          };
+        }
       );
     },
   });
+
 
   const handleDeleteProgrammiz = (runId) => {
     console.log("i got del req", runId);
@@ -112,37 +135,30 @@ export default function WorkflowsPage() {
   }
 
   const fetchRecentPrintRuns = async () => {
-    const response = await axios.get(`http://localhost:8000/profile/printCases`, {
-      params: {
-        page: currentPage.run,
-        limit: 7
-      },
+    console.log("from api:", runsCursor.cursorCreatedAt, runsCursor.cursorTie);
+    const response = await axios.get(`http://localhost:8000/profile/getPrint/${runsCursor.cursorCreatedAt}/${runsCursor.cursorTie}/2`, {
       withCredentials: true
-    })
-    SethasNextPage(prev => ({
-      ...prev,
-      run: response?.data?.pagination.hasNextPage
-    }))
-
-    console.log("has next page:", response.data.pagination.hasNextPage)
-    return response.data.data
+    });
+    console.log("from api:", response.data);
+    return response.data;
   }
+
 
   const fetchRawExecution = async () => {
-    const response = await axios.get(`http://localhost:8000/profile/programmizLogs`, {
-      params: {
-        page: currentPage.programmiz,
-        limit: 7
-      },
+
+    console.log("data:", RawExeData);
+    console.log("meta:", cursor.cursorCreatedAt,
+      cursor.cursorTie,)
+
+    const response = await axios.get(`http://localhost:8000/profile/getProgrammiz/${cursor.cursorCreatedAt}/${cursor.cursorTie}/6`, {
       withCredentials: true
-    })
-    SethasNextPage(prev => ({
-      ...prev,
-      programmiz: response?.data?.pagination.hasNextPage
-    }))
-    console.log("has next page:", response.data.pagination.hasNextPage)
-    return response.data.data
-  }
+    });
+
+    console.log("has next page:", response.data.nextCursor);
+
+
+    return response.data;
+  };
 
   const reRunPrint = async (runId) => {
     console.log("run id:", runId)
@@ -196,7 +212,7 @@ export default function WorkflowsPage() {
     isError: RecentPrintError,
     refetch: refetchRecentPrint,
   } = useQuery({
-    queryKey: ["RecentPrint", "runs", `${currentPage.run}`],
+    queryKey: ["RecentPrint", "runs", runsCursor.cursorCreatedAt, runsCursor.cursorTie],
     queryFn: fetchRecentPrintRuns,
     refetchOnWindowFocus: false,
     refetchOnMount: false,
@@ -224,16 +240,16 @@ export default function WorkflowsPage() {
     isError: RawExeError,
     refetch: refetchRawExe,
   } = useQuery({
-    queryKey: ["rawExe", "programmiz", `${currentPage.programmiz}`],
+    queryKey: ["rawExe", "programmiz", cursor.cursorCreatedAt, cursor.cursorTie],
     queryFn: fetchRawExecution,
     refetchOnWindowFocus: false,
     refetchOnMount: false,
     staleTime: 5 * 60 * 1000,
   })
 
+  const normalizedRawExe = useMemo(() => (Array.isArray(RawExeData) ? RawExeData : RawExeData?.data || []), [RawExeData])
   const normalizedWorkflows = useMemo(() => (Array.isArray(AvgTestCasedata) ? AvgTestCasedata : AvgTestCasedata?.data || []), [AvgTestCasedata])
   const normalizedRecentPrints = useMemo(() => (Array.isArray(RecentPrintData) ? RecentPrintData : RecentPrintData?.data || []), [RecentPrintData])
-  const normalizedRawExe = useMemo(() => (Array.isArray(RawExeData) ? RawExeData : RawExeData?.data || []), [RawExeData])
 
   const filteredWorkflows = useMemo(
     () =>
@@ -607,29 +623,26 @@ export default function WorkflowsPage() {
                 <div className=" flex justify-center gap-x-5">
                   <Button
                     variant="outline"
-                    className="gap-2 bg-transparent border-gray-200 text-gray-700 dark:border-slate-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-gray-800"
+                    className="gap-2 bg-transparent border-gray-200 text-gray-700 dark:border-slate-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
                     size="sm"
-                    disabled={currentPage.run == 1}
-                    onClick={() =>
-                      SetcurrentPage(prev => ({
-                        ...prev,
-                        run: prev.run - 1
-                      }))
-                    }
+                    disabled={runsPageIndex === 0 || RecentPrintLoading}
+                    onClick={() => {
+                      if (runsPageIndex === 0) return;
+                      setRunsPageIndex((i) => i - 1);
+                    }}
                   >prev
                   </Button>
                   <Button
                     variant="outline"
-                    className="gap-2 bg-transparent border-gray-200 text-gray-700 dark:border-slate-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-gray-800"
+                    className="gap-2 bg-transparent border-gray-200 text-gray-700 dark:border-slate-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
                     size="sm"
-                    disabled={hasNextPage.run == false}
-                    onClick={() =>
-                      SetcurrentPage(prev => ({
-                        ...prev,
-                        run: prev.run + 1
-                      }))
-                    }
+                    disabled={!RecentPrintData?.nextCursor || RecentPrintLoading || normalizedRecentPrints.length === 0}
+                    onClick={(e) => {
+                      if (!RecentPrintData?.nextCursor) return;
 
+                      setRunsCursorStack((prev) => [...prev, RecentPrintData.nextCursor]);
+                      setRunsPageIndex((i) => i + 1);
+                    }}
                   >Next
                   </Button>
 
@@ -757,27 +770,24 @@ export default function WorkflowsPage() {
                     variant="outline"
                     className="gap-2 bg-transparent border-gray-200 text-gray-700 dark:border-slate-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-gray-800"
                     size="sm"
-                    disabled={currentPage.programmiz == 1}
-                    onClick={() =>
-                      SetcurrentPage(prev => ({
-                        ...prev,
-                        programmiz: prev.programmiz - 1
-                      }))
-                    }
+                    disabled={pageIndex === 0 || RawExeLoading}
+                    onClick={() => {
+                      if (pageIndex === 0) return;
+                      setPageIndex((i) => i - 1);
+                    }}
                   >prev
                   </Button>
                   <Button
                     variant="outline"
                     className="gap-2 bg-transparent border-gray-200 text-gray-700 dark:border-slate-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-gray-800"
                     size="sm"
-                    disabled={hasNextPage.programmiz == false}
-                    onClick={() =>
-                      SetcurrentPage(prev => ({
-                        ...prev,
-                        programmiz: prev.programmiz + 1
-                      }))
-                    }
+                    disabled={!RawExeData?.nextCursor || RawExeLoading || normalizedRawExe.length === 0}
+                    onClick={(e) => {
+                      if (!RawExeData?.nextCursor) return;
 
+                      setCursorStack((prev) => [...prev, RawExeData.nextCursor]);
+                      setPageIndex((i) => i + 1);
+                    }}
                   >Next
                   </Button>
                 </div>

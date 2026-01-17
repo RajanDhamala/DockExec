@@ -264,6 +264,7 @@ def all_test_consumer(_):
         parameters = job.get("parameters")
         wrapper_type = job.get("wrapper_type")
         type=job.get("type")
+        createdAt=job.get("createdAt")
 
 
         is_safe = checker.check(code, language)
@@ -277,7 +278,8 @@ def all_test_consumer(_):
                 "code": code,
                 "reason": checker.reason(),
                 "status": "unsafe",
-                "type":type
+                "type":type,
+                "createdAt":createdAt
             })
             ch.basic_ack(delivery_tag=method.delivery_tag)
             return
@@ -297,7 +299,8 @@ def all_test_consumer(_):
                 "userId": user_id,
                 "problemId": problem_id,
                 "orginalCode": code if i == 0 else "",
-                "type":type
+                "type":type,
+                "createdAt":createdAt
             })
             print("wrapper genrated and sent",i)
 
@@ -330,6 +333,7 @@ def print_test_consumer(_):
         wrapper_type = job.get("wrapper_type")
         type=job.get("type")
         problem_id = job.get("problemId")
+        createdAt=job.get("createdAt")
 
         print("this is for the single conusmer btw")
 
@@ -343,7 +347,8 @@ def print_test_consumer(_):
                 "code": code,
                 "reason": checker.reason(),
                 "status": "unsafe",
-                "type":type
+                "type":type,
+                "createdAt":createdAt
             })
             ch.basic_ack(delivery_tag=method.delivery_tag)
             return
@@ -356,8 +361,10 @@ def print_test_consumer(_):
             "language": language,
             "userId": user_id,
             "problemId": problem_id,
-            "type":type
+            "type":type,
+            "createdAt":createdAt
         })
+        print("createdat emited:",createdAt)
 
         ch.basic_ack(delivery_tag=method.delivery_tag)
 

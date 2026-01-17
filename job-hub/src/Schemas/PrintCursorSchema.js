@@ -1,6 +1,7 @@
+
 import mongoose from "mongoose";
 
-const RunCodeSchema = new mongoose.Schema(
+const PrintCursorSchema = new mongoose.Schema(
   {
     _id: {
       type: String,
@@ -55,8 +56,9 @@ const RunCodeSchema = new mongoose.Schema(
   }, { timestamps: false }
 );
 
-RunCodeSchema.index({ userId: 1, createdAt: -1, tie: -1 });
 
-const TrialRunner = mongoose.model("TrialResult", RunCodeSchema);
+PrintCursorSchema.index({ userId: 1, createdAt: -1, tie: -1 });
 
-export default TrialRunner;
+const PrintCursor = mongoose.model("PrintCursorSchema", PrintCursorSchema);
+
+export default PrintCursor;

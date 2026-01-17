@@ -6,8 +6,18 @@ import { RedisClient } from "../Utils/RedisClient.js";
 
 // mongoose.set("debug", true);
 const LogTrialResult = async (data) => {
+  console.log("cursor print data:", data)
+  const key = `testPrint:tie:${data.userId}:${data.createdAt}`;
+
   try {
-    return await TrialRunner.create({
+    const tie = await RedisClient.incr(key);
+    console.log("createdAt:", data.createdAt, "usrId:", data.userId)
+    let finalCreatedAt = data.createdAt
+    if (tie > 1) {
+      console.log("we hit the tie condition")
+      finalCreatedAt = data.createdAt + (tie - 1) * 0.001;
+    }
+    const rest = await TrialRunner.create({
       _id: data.jobId,
       problemid: data.problemId,
       userId: data.userId,
@@ -16,10 +26,13 @@ const LogTrialResult = async (data) => {
       status: data.status,
       output: data.actualOutput,
       execution_time: data.duration,
+      createdAt: data.createdAt,
+      problemId: data.problemId,
+      tie: tie
     })
+    console.log("succesfully created testprint", rest)
   } catch (err) {
-    console.error("Trial log DB insert failed:", err)
-    return null
+    console.log("fialed wile inserting cursorPrint 2 db", err)
   }
 }
 
@@ -80,21 +93,32 @@ const LogTestCaseResult = async (data) => {
 
 const LogRawExecution = async (data) => {
   console.log("language :", data.language)
+  const key = `rawexec:tie:${data.userId}:${data.createdAt}`;
   try {
     console.log("result aayo hai vai")
-    return await RawExecution.create({
+    console.log("createdAt:", data.createdAt)
+    const tie = await RedisClient.incr(key);
+    let finalCreatedAt = data.createdAt
+    if (tie > 1) {
+      console.log("tie break conditon should be executed btw")
+      finalCreatedAt = data.createdAt + (tie - 1) * 0.001;
+    }
+    await RawExecution.create({
       _id: data.jobId,
       userId: data.userId,
       language: data.language,
       code: data.code,
       status: data.status,
       output: data.output,
-      execution_time: data.duration_sec
+      execution_time: data.duration_sec,
+      createdAt: finalCreatedAt,
+      tie: tie, // Store the tie value from Redis (1-indexed: 1, 2, 3, ...)
     })
   } catch (err) {
     console.error("Raw execution DB insert failed:", err)
     return null
   }
+
 }
 
 export {
