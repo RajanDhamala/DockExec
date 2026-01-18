@@ -136,7 +136,7 @@ export default function WorkflowsPage() {
 
   const fetchRecentPrintRuns = async () => {
     console.log("from api:", runsCursor.cursorCreatedAt, runsCursor.cursorTie);
-    const response = await axios.get(`http://localhost:8000/profile/getPrint/${runsCursor.cursorCreatedAt}/${runsCursor.cursorTie}/2`, {
+    const response = await axios.get(`http://localhost:8000/profile/getPrint/${runsCursor.cursorCreatedAt}/${runsCursor.cursorTie}/6`, {
       withCredentials: true
     });
     console.log("from api:", response.data);

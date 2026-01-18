@@ -37,7 +37,6 @@ const LogTrialResult = async (data) => {
 }
 
 const LogTestCaseResult = async (data) => {
-  console.log("Parsing test case data from Redis...");
 
   const { total, testCases } = Object.entries(data).reduce(
     (acc, [field, value]) => {
@@ -71,7 +70,14 @@ const LogTestCaseResult = async (data) => {
 
   const passedNo = formattedTestCases.filter(tc => tc.isPassed).length;
   console.log("code:", ref.orginalCode)
-
+  const key = `rawexec:tie:${ref.userId}:${ref.createdAt}`;
+  const tie = await RedisClient.incr(key)
+  console.log("createdAt haai:", ref.createdAt)
+  let finalCreatedAt = ref.createdAt
+  if (tie > 1) {
+    console.log("collision detected")
+    finalCreatedAt = data.createdAt + (tie - 1) * 0.001;
+  }
   try {
     await TestCase.create({
       _id: ref.jobId,
@@ -82,13 +88,16 @@ const LogTestCaseResult = async (data) => {
       status: passedNo === total ? "success" : "failed",
       testCases: formattedTestCases,
       passedNo: passedNo,
-      code: ref.orginalCode
+      code: ref.orginalCode,
+      createdAt: finalCreatedAt,
+      tie: tie
     });
 
     console.log("Created submission:", ref.jobId);
   } catch (err) {
     console.error("Error saving submission:", err);
   }
+
 };
 
 const LogRawExecution = async (data) => {

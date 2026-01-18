@@ -142,57 +142,88 @@ const ChangePassword = asyncHandler(async (req, res) => {
 
 
 const RecentExecutions = asyncHandler(async (req, res) => {
-  const user = req.user;
+  const { pageLimit, cursorCreatedAt, cursorTie } = req.params;
+  const userId = req.user?.id;
 
-  const recentExe = await TestCase.aggregate([
-    {
-      $match: {
-        userId: new mongoose.Types.ObjectId(user.id)
-      }
-    },
-    { $sort: { createdAt: -1 } },
-    { $limit: 8 },
+  if (!userId) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+
+  const limit = parseInt(pageLimit, 10) || PAGE_LIMIT_DEFAULT;
+
+  const isInitialFetch =
+    cursorCreatedAt === "init" && cursorTie === "init";
+
+  const userIdObj = new mongoose.Types.ObjectId(userId);
+
+  const query = { userId: userIdObj };
+
+  // cursor condition (ONLY when not initial fetch)
+  if (!isInitialFetch) {
+    const createdAtDate = new Date(cursorCreatedAt);
+    const tieNum = Number(cursorTie);
+
+    if (!isNaN(createdAtDate.getTime()) && !isNaN(tieNum)) {
+      query.$or = [
+        { createdAt: { $lt: createdAtDate } },
+        {
+          createdAt: createdAtDate,
+          tie: { $lt: tieNum },
+        },
+      ];
+    }
+  }
+
+  const docs = await TestCase.aggregate([
+    { $match: query },
+
+    { $sort: { createdAt: -1, tie: -1 } },
+
+    { $limit: limit },
 
     {
       $lookup: {
         from: "problems",
         localField: "problemId",
         foreignField: "_id",
-        as: "problem"
-      }
+        as: "problem",
+      },
     },
 
-    {
-      $unwind: {
-        path: "$problem",
-        preserveNullAndEmptyArrays: true
-      }
-    },
+    { $unwind: { path: "$problem", preserveNullAndEmptyArrays: true } },
 
     {
       $project: {
-        createdAt: 1,
-        status: 1,
         language: 1,
         totalTestCases: 1,
+        status: 1,
         passedNo: 1,
-        firstTestCaseDuration: {
-          $arrayElemAt: ["$testCases.duration", 0]
-        },
-
+        createdAt: 1,
+        tie: 1,
         problemId: 1,
-        name: "$problem.title", // or name
-      }
-    }
+        name: "$problem.title",
+        firstTestCaseDuration: {
+          $arrayElemAt: ["$testCases.duration", 0],
+        },
+      },
+    },
   ]);
 
-  if (!recentExe || recentExe.length === 0) {
-    throw new ApiError(400, null, "no recent executions found");
+  let nextCursor = null;
+
+  if (docs.length === limit) {
+    const lastDoc = docs[docs.length - 1];
+    nextCursor = {
+      cursorCreatedAt: lastDoc.createdAt.toISOString(),
+      cursorTie: lastDoc.tie,
+    };
   }
 
-  return res.send(
-    new ApiResponse(200, "fetched recent executions", recentExe)
-  );
+  res.json({
+    data: docs,
+    nextCursor,
+  });
+
 });
 
 const ViewRecentExecutionsDetail = asyncHandler(async (req, res) => {

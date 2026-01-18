@@ -1,16 +1,48 @@
 
 import mongoose from "mongoose";
 
-// --- TestCase schema ---
 const TestCaseSchema = new mongoose.Schema({
-  _id: { type: String }, // jobId
-  userId: { type: mongoose.Schema.ObjectId, required: true, ref: "User", index: true },       // user _id string
-  problemId: { type: mongoose.Schema.ObjectId, required: true, ref: "Problem", index: true },    // problem _id string
-  language: { type: String, required: true },
-  totalTestCases: { type: Number, default: 0 },
-  status: { type: String, default: "failed" },
-  passedNo: { type: Number },
-  code: { type: String },
+  _id: {
+    type: String
+  },
+  userId: {
+    type: mongoose.Schema.ObjectId,
+    required: true,
+    ref: "User",
+    index: true
+  },
+  problemId: {
+    type: mongoose.Schema.ObjectId,
+    required: true,
+    ref: "Problem",
+    index: true
+  },
+  language: {
+    type: String,
+    required: true
+  },
+  totalTestCases: {
+    type: Number,
+    default: 0
+  },
+  status: {
+    type: String,
+    default: "failed"
+  },
+  passedNo: {
+    type: Number
+  },
+  code: {
+    type: String
+  }, createdAt: {
+    type: Date,
+    default: Date.now(),
+    index: true
+  }, tie: {
+    type: Number,
+    default: 0,
+    index: true
+  },
   testCases: [
     {
       caseId: String,
@@ -23,8 +55,9 @@ const TestCaseSchema = new mongoose.Schema({
       executedAt: { type: Date, default: Date.now }
     }
   ]
-}, { timestamps: true });
+}, { timestamps: false });
 
-// Safe model registration
+TestCaseSchema.index({ userId: 1, createdAt: -1, tie: -1 })
+
 const TestCase = mongoose.models.TestCase || mongoose.model("TestCase", TestCaseSchema);
 export default TestCase

@@ -18,7 +18,7 @@ ProfileRouter.get("/recentActivity", createLimiter("normal"), AuthUser, getRecen
 
 ProfileRouter.post("/changePassword", createLimiter("changePassword"), AuthUser, ChangePassword)
 
-ProfileRouter.get("/recentExe", createLimiter("normal"), AuthUser, RecentExecutions)
+ProfileRouter.get("/getTestCases/:cursorCreatedAt/:cursorTie/:pageLimit", createLimiter("normal"), AuthUser, RecentExecutions)
 ProfileRouter.get("/reRunrecentExe/:runId/:socketId", createLimiter("reRunRecentExe"), AuthIdemptent, reRunRecentExecutions)
 ProfileRouter.get("/LogRecentExe/:exeId", createLimiter("normal"), AuthUser, LogRecentExecutionsDetail)
 ProfileRouter.delete("/delRecentExe/:exeId", createLimiter("normal"), AuthUser, DelRecentExecution)

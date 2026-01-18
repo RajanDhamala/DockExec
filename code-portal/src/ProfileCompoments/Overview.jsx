@@ -62,6 +62,12 @@ export default function Overview() {
   });
   const navigate = useNavigate()
 
+  const [recentExeCursorStack, setRecentExeCursorStack] = useState([
+    { cursorCreatedAt: "init", cursorTie: "init" },
+  ]);
+  const [recentExePageIndex, setRecentExePageIndex] = useState(0);
+  const recentExeCursor = recentExeCursorStack[recentExePageIndex];
+
   const fetchChartMetrics = async () => {
     const response = await axios.get(`http://localhost:8000/users/timeMetrics`, {
       withCredentials: true
@@ -102,9 +108,12 @@ export default function Overview() {
     mutationFn: (runId) => DelRecentProblem(runId),
     onSuccess: (_, runId) => {
       console.log("Successfully deleted:", runId);
-      queryClient.setQueryData(["recentExe", "data"], (oldData) =>
-        oldData.filter((item) => item._id !== runId)
-      );
+      queryClient.setQueryData(["recentExe", "cursor", recentExeCursor.cursorCreatedAt, recentExeCursor.cursorTie], (oldData) => {
+        if (!oldData) return oldData;
+        const data = Array.isArray(oldData) ? oldData : oldData?.data || [];
+        const filtered = data.filter((item) => item._id !== runId);
+        return Array.isArray(oldData) ? filtered : { ...oldData, data: filtered };
+      });
     },
   });
 
@@ -145,20 +154,23 @@ export default function Overview() {
 
 
   const fetchRecentExecutions = async () => {
-    const request = await axios.get(`http://localhost:8000/profile/recentExe`, {
+    console.log("from api:", recentExeCursor.cursorCreatedAt, recentExeCursor.cursorTie);
+    const response = await axios.get(`http://localhost:8000/profile/getTestCases/${recentExeCursor.cursorCreatedAt}/${recentExeCursor.cursorTie}/6`, {
       withCredentials: true
-    })
-    return request.data.data
+    });
+    console.log("from api:", response.data);
+    return response.data;
   }
 
   const { data: recentExcData, isError: recentError, isLoading: isRecentLoading } = useQuery({
-    queryKey: ["recentExe", "data"],
+    queryKey: ["recentExe", "cursor", recentExeCursor.cursorCreatedAt, recentExeCursor.cursorTie],
     queryFn: fetchRecentExecutions,
     retry: false
   });
 
   // Transform API data to table-friendly format
-  const tableData = recentExcData?.map(item => ({
+  const normalizedRecentExe = useMemo(() => (Array.isArray(recentExcData) ? recentExcData : recentExcData?.data || []), [recentExcData]);
+  const tableData = normalizedRecentExe?.map(item => ({
     id: item._id, // first 4 characters of ID
     name: item.name || "Unknown Problem",
     started: new Date(item.createdAt).toLocaleString("en-GB", {
@@ -570,6 +582,7 @@ export default function Overview() {
                     <CardTitle className="text-lg font-semibold dark:text-white">Recent Executions</CardTitle>
                     <CardDescription className="dark:text-slate-400">Monitor your code executions and performance</CardDescription>
                   </div>
+
                 </div>
               </CardHeader>
               <CardContent className="p-0 overflow-x-auto">
@@ -660,6 +673,32 @@ export default function Overview() {
                     )}
                   </TableBody>
                 </Table>
+                <div className="flex justify-center gap-x-5 py-4 border-t border-gray-200 dark:border-slate-700">
+                  <Button
+                    variant="outline"
+                    className="gap-2 bg-transparent border-gray-200 text-gray-700 dark:border-slate-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
+                    size="sm"
+                    disabled={recentExePageIndex === 0 || isRecentLoading}
+                    onClick={() => {
+                      if (recentExePageIndex === 0) return;
+                      setRecentExePageIndex((i) => i - 1);
+                    }}
+                  >prev
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="gap-2 bg-transparent border-gray-200 text-gray-700 dark:border-slate-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
+                    size="sm"
+                    disabled={!recentExcData?.nextCursor || isRecentLoading || normalizedRecentExe?.length === 0}
+                    onClick={(e) => {
+                      if (!recentExcData?.nextCursor) return;
+
+                      setRecentExeCursorStack((prev) => [...prev, recentExcData.nextCursor]);
+                      setRecentExePageIndex((i) => i + 1);
+                    }}
+                  >Next
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           </div>

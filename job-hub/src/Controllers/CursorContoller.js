@@ -225,6 +225,7 @@ const createCursorTestCases = async (data) => {
 
 }
 
+
 const getCursorTestCases = asyncHandler(async (req, res) => {
   const { pageLimit, cursorCreatedAt, cursorTie } = req.params;
   const userId = req.user?.id;
@@ -236,29 +237,34 @@ const getCursorTestCases = asyncHandler(async (req, res) => {
   const limit = parseInt(pageLimit, 10) || PAGE_LIMIT_DEFAULT;
 
   const isInitialFetch =
-    cursorCreatedAt == "init" && cursorTie == "init";
+    cursorCreatedAt === "init" && cursorTie === "init";
 
   const userIdObj = new mongoose.Types.ObjectId(userId);
+
   const query = { userId: userIdObj };
+
   if (!isInitialFetch) {
     const createdAtDate = new Date(cursorCreatedAt);
     const tieNum = Number(cursorTie);
 
     if (!isNaN(createdAtDate.getTime()) && !isNaN(tieNum)) {
       query.$or = [
-        { userId: userIdObj, createdAt: { $lt: createdAtDate } },
-        { userId: userIdObj, createdAt: createdAtDate, tie: { $lt: tieNum } },
+        { createdAt: { $lt: createdAtDate } },
+        {
+          createdAt: createdAtDate,
+          tie: { $lt: tieNum },
+        },
       ];
     }
   }
 
-
   const docs = await CursorTestCases.aggregate([
     { $match: query },
-    { $sort: { createdAt: -1, _id: -1 } }, // include _id as tie
+
+    { $sort: { createdAt: -1, tie: -1 } },
+
     { $limit: limit },
 
-    // lookup problem title
     {
       $lookup: {
         from: "problems",
@@ -267,8 +273,10 @@ const getCursorTestCases = asyncHandler(async (req, res) => {
         as: "problem",
       },
     },
+
     { $unwind: { path: "$problem", preserveNullAndEmptyArrays: true } },
 
+    // project ONLY what frontend needs
     {
       $project: {
         language: 1,
@@ -276,15 +284,15 @@ const getCursorTestCases = asyncHandler(async (req, res) => {
         status: 1,
         passedNo: 1,
         createdAt: 1,
-        tie: "$_id",
+        tie: 1,
         problemId: 1,
         name: "$problem.title",
-        firstTestCaseDuration: { $arrayElemAt: ["$testCases.duration", 0] },
+        firstTestCaseDuration: {
+          $arrayElemAt: ["$testCases.duration", 0],
+        },
       },
     },
   ]);
-
-
 
   let nextCursor = null;
 
@@ -300,8 +308,7 @@ const getCursorTestCases = asyncHandler(async (req, res) => {
     data: docs,
     nextCursor,
   });
-
-})
+});
 
 
 

@@ -140,7 +140,6 @@ await connectRedis();
           console.log("all data:", all)
           await saveTest2db(all)
           await LogTestCaseResult(all)
-          createCursorTestCases(all)
         }
       }
       channel.ack(msg);
