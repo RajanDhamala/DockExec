@@ -23,7 +23,7 @@ const emitBlockedresult = async (data) => {
 const emitAllCaseResult = async (data) => {
   try {
     const io = getIO();
-
+    console.log("data", data)
     if (!data.jobId || !data.jobId.trim() || !data.testCaseId || !data.testCaseId.trim()) {
       console.log("Skipping empty/dummy test result");
       return;
