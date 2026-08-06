@@ -1,7 +1,7 @@
 import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient({
-  log: ["query", "error"] // optional: logs queries and errors
+  log: [ "error"] // optional: logs queries and errors
 });
 
 process.on("SIGINT", async () => {
